@@ -57,16 +57,16 @@ jobs:
               $Year = $Now.Year.ToString()
 
               if ($Source -eq "Stooq") {
-                  # Do NOT URL-encode the ticker — Stooq needs the literal ^ in the query string
-                  $Csv  = Invoke-RestMethod `
+                  $Resp = Invoke-WebRequest `
                               -Uri "https://stooq.com/q/d/l/?s=$Ticker&i=d" `
                               -Headers @{ "User-Agent" = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" } `
-                              -ErrorAction Stop
-                  $Rows = ($Csv -split "`n") | Where-Object { $_ -match "^\d{4}" } | ForEach-Object {
-                      $c = $_.Trim() -split ","   # Trim() removes \r on Linux
+                              -UseBasicParsing -ErrorAction Stop
+                  Write-Host "Stooq response ($Ticker): $($Resp.StatusCode) — $(($Resp.Content)[0..200] -join '')"
+                  $Rows = ($Resp.Content -split "`n") | Where-Object { $_ -match "^\d{4}" } | ForEach-Object {
+                      $c = $_.Trim() -split ","
                       [PSCustomObject]@{ date = $c[0]; close = [double]$c[4] }
                   } | Sort-Object date -Descending
-                  if ($Rows.Count -eq 0) { throw "Stooq returned no rows for $Ticker" }
+                  if ($Rows.Count -eq 0) { throw "Stooq returned no data rows for $Ticker. Raw: $(($Resp.Content)[0..300] -join '')" }
               } else {
                   $Enc  = [Uri]::EscapeDataString($Ticker)
                   $R    = Invoke-RestMethod `
@@ -111,6 +111,7 @@ jobs:
                       $out   += "  Day: $(Fmt $d.DayPct) | Week: $(Fmt $d.WeekPct) | Month: $(Fmt $d.MonthPct) | YTD: $(Fmt $d.YtdPct)"
                   } catch {
                       $out   += "*$($idx.Market): $($idx.Name)* — unavailable ⚠️"
+                      $out   += "  _Error: $($_.Exception.Message)_"
                   }
                   $out += ""
               }
