@@ -35,6 +35,8 @@ jobs:
               @{ Name = "OMXSPI";    Ticker = "^OMXSPI"; Market = "SE" }
               @{ Name = "S&P 500";   Ticker = "^GSPC";   Market = "US" }
               @{ Name = "Dow Jones"; Ticker = "^DJI";    Market = "US" }
+              @{ Name = "Microsoft"; Ticker = "MSFT";    Market = "US" }
+              @{ Name = "Bitcoin";   Ticker = "BTC-USD";  Market = "CRYPTO" }
           )
 
           function Get-MarketStatus([string]$Market) {
@@ -48,6 +50,7 @@ jobs:
                   if ($T -lt 1320) { return "Open" }
                   return "Closed"
               }
+              if ($Market -eq "CRYPTO") { return "Open 24/7" }
           }
 
           function Get-IndexData([string]$Ticker) {
