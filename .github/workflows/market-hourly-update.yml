@@ -17,7 +17,6 @@ jobs:
           TELEGRAM_TOKEN:   ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           TWELVEDATA_KEY:   ${{ secrets.TWELVEDATA_KEY }}
-          FMP_KEY:          ${{ secrets.FMP_KEY }}
         run: |
           $TZ     = [System.TimeZoneInfo]::FindSystemTimeZoneById('Europe/Stockholm')
           $Now    = [System.TimeZoneInfo]::ConvertTimeFromUtc([DateTime]::UtcNow, $TZ)
@@ -32,8 +31,7 @@ jobs:
           }
 
           $Indices = @(
-              @{ Name = "OMXS30";          Ticker = "%5EOMX";    Market = "SE";     Source = "FMP" }
-              @{ Name = "OMXSPI";          Ticker = "%5EOMXSPI"; Market = "SE";     Source = "FMP" }
+              @{ Name = "Sweden (EWD)";    Ticker = "EWD";     Market = "US";     Source = "TwelveData" }
               @{ Name = "S&P 500 (SPY)";   Ticker = "SPY";     Market = "US";     Source = "TwelveData" }
               @{ Name = "Dow Jones (DIA)";  Ticker = "DIA";     Market = "US";     Source = "TwelveData" }
               @{ Name = "Microsoft";        Ticker = "MSFT";    Market = "US";     Source = "TwelveData" }
@@ -57,17 +55,7 @@ jobs:
           function Get-IndexData([string]$Ticker, [string]$Source) {
               $Year = $Now.Year.ToString()
 
-              if ($Source -eq "FMP") {
-                  # Historical daily prices from Financial Modeling Prep
-                  $R    = Invoke-RestMethod `
-                              -Uri "https://financialmodelingprep.com/api/v3/historical-price-full/$Ticker?timeseries=252&apikey=$($env:FMP_KEY)" `
-                              -ErrorAction Stop
-                  if (-not $R.historical) { throw "FMP returned no data for $Ticker" }
-                  # historical[0] = most recent
-                  $Rows = $R.historical | ForEach-Object {
-                      [PSCustomObject]@{ date = $_.date; close = [double]$_.close }
-                  }
-              } else {
+              if ($Source -eq "TwelveData") {
                   $Enc  = [Uri]::EscapeDataString($Ticker)
                   $R    = Invoke-RestMethod `
                               -Uri "https://api.twelvedata.com/time_series?symbol=$Enc&interval=1day&outputsize=252&apikey=$($env:TWELVEDATA_KEY)" `
@@ -76,7 +64,6 @@ jobs:
                   $Rows = $R.values | ForEach-Object {
                       [PSCustomObject]@{ date = $_.datetime; close = [double]$_.close }
                   }
-              }
 
               $N   = $Rows.Count
               $Cur = $Rows[0].close
