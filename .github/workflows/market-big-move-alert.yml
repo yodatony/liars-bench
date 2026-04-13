@@ -27,10 +27,12 @@ jobs:
 
           $Threshold = 2.0
           $Indices = @(
-              @{ Name = "OMXS30";    Ticker = "^OMX";    Market = "SE"; OpenFrom = 540;  OpenTo = 1050 }
-              @{ Name = "OMXSPI";    Ticker = "^OMXSPI"; Market = "SE"; OpenFrom = 540;  OpenTo = 1050 }
-              @{ Name = "S&P 500";   Ticker = "^GSPC";   Market = "US"; OpenFrom = 930;  OpenTo = 1320 }
-              @{ Name = "Dow Jones"; Ticker = "^DJI";    Market = "US"; OpenFrom = 930;  OpenTo = 1320 }
+              @{ Name = "OMXS30";    Ticker = "^OMX";    Market = "SE";     OpenFrom = 540;  OpenTo = 1050 }
+              @{ Name = "OMXSPI";    Ticker = "^OMXSPI"; Market = "SE";     OpenFrom = 540;  OpenTo = 1050 }
+              @{ Name = "S&P 500";   Ticker = "^GSPC";   Market = "US";     OpenFrom = 930;  OpenTo = 1320 }
+              @{ Name = "Dow Jones"; Ticker = "^DJI";    Market = "US";     OpenFrom = 930;  OpenTo = 1320 }
+              @{ Name = "Microsoft"; Ticker = "MSFT";    Market = "US";     OpenFrom = 930;  OpenTo = 1320 }
+              @{ Name = "Bitcoin";   Ticker = "BTC-USD"; Market = "CRYPTO"; OpenFrom = 0;    OpenTo = 1440 }
           )
 
           $Alerts = @()
