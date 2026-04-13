@@ -64,6 +64,7 @@ jobs:
                   $Rows = $R.values | ForEach-Object {
                       [PSCustomObject]@{ date = $_.datetime; close = [double]$_.close }
                   }
+              }
 
               $N   = $Rows.Count
               $Cur = $Rows[0].close
