@@ -57,12 +57,16 @@ jobs:
               $Year = $Now.Year.ToString()
 
               if ($Source -eq "Stooq") {
-                  $Enc  = [Uri]::EscapeDataString($Ticker)
-                  $Csv  = Invoke-RestMethod -Uri "https://stooq.com/q/d/l/?s=$Enc&i=d" -ErrorAction Stop
+                  # Do NOT URL-encode the ticker — Stooq needs the literal ^ in the query string
+                  $Csv  = Invoke-RestMethod `
+                              -Uri "https://stooq.com/q/d/l/?s=$Ticker&i=d" `
+                              -Headers @{ "User-Agent" = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" } `
+                              -ErrorAction Stop
                   $Rows = ($Csv -split "`n") | Where-Object { $_ -match "^\d{4}" } | ForEach-Object {
-                      $c = $_ -split ","
+                      $c = $_.Trim() -split ","   # Trim() removes \r on Linux
                       [PSCustomObject]@{ date = $c[0]; close = [double]$c[4] }
                   } | Sort-Object date -Descending
+                  if ($Rows.Count -eq 0) { throw "Stooq returned no rows for $Ticker" }
               } else {
                   $Enc  = [Uri]::EscapeDataString($Ticker)
                   $R    = Invoke-RestMethod `
