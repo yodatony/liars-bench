@@ -105,26 +105,23 @@ jobs:
               return $out
           }
 
-          $SeIdx = @($Indices | Where-Object { $_.Market -eq "SE" })
-          $UsIdx = @($Indices | Where-Object { $_.Market -eq "US" })
-
           $lines = @()
           if ($Hour -eq 9 -and $Min -eq 0) {
               $lines += "*🔔 SE Market Open — $($Now.ToString('yyyy-MM-dd HH:mm')) CET*"
               $lines += "_US market opens at 15:30 CET_"
               $lines += ""
-              $lines += Get-Lines $SeIdx
+              $lines += Get-Lines $Indices
           }
           elseif ($Hour -eq 17 -and $Min -eq 30) {
               $lines += "*🔕 SE Market Close — $($Now.ToString('yyyy-MM-dd HH:mm')) CET*"
               $lines += "_US market closes at 22:00 CET_"
               $lines += ""
-              $lines += Get-Lines $SeIdx
+              $lines += Get-Lines $Indices
           }
           elseif ($Hour -eq 22 -and $Min -eq 0) {
               $lines += "*🔕 US Market Close — $($Now.ToString('yyyy-MM-dd HH:mm')) CET*"
               $lines += ""
-              $lines += Get-Lines $UsIdx
+              $lines += Get-Lines $Indices
           }
           else {
               $lines += "*📈 Market Update — $($Now.ToString('yyyy-MM-dd HH:mm')) CET*"
