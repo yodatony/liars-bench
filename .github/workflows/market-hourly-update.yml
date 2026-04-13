@@ -17,6 +17,7 @@ jobs:
           TELEGRAM_TOKEN:   ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           TWELVEDATA_KEY:   ${{ secrets.TWELVEDATA_KEY }}
+          FMP_KEY:          ${{ secrets.FMP_KEY }}
         run: |
           $TZ     = [System.TimeZoneInfo]::FindSystemTimeZoneById('Europe/Stockholm')
           $Now    = [System.TimeZoneInfo]::ConvertTimeFromUtc([DateTime]::UtcNow, $TZ)
@@ -31,8 +32,8 @@ jobs:
           }
 
           $Indices = @(
-              @{ Name = "OMXS30";          Ticker = "^omx";    Market = "SE";     Source = "Stooq" }
-              @{ Name = "OMXSPI";          Ticker = "^omxspi"; Market = "SE";     Source = "Stooq" }
+              @{ Name = "OMXS30";          Ticker = "%5EOMX";    Market = "SE";     Source = "FMP" }
+              @{ Name = "OMXSPI";          Ticker = "%5EOMXSPI"; Market = "SE";     Source = "FMP" }
               @{ Name = "S&P 500 (SPY)";   Ticker = "SPY";     Market = "US";     Source = "TwelveData" }
               @{ Name = "Dow Jones (DIA)";  Ticker = "DIA";     Market = "US";     Source = "TwelveData" }
               @{ Name = "Microsoft";        Ticker = "MSFT";    Market = "US";     Source = "TwelveData" }
@@ -56,17 +57,16 @@ jobs:
           function Get-IndexData([string]$Ticker, [string]$Source) {
               $Year = $Now.Year.ToString()
 
-              if ($Source -eq "Stooq") {
-                  $Resp = Invoke-WebRequest `
-                              -Uri "https://stooq.com/q/d/l/?s=$Ticker&i=d" `
-                              -Headers @{ "User-Agent" = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" } `
-                              -UseBasicParsing -ErrorAction Stop
-                  Write-Host "Stooq response ($Ticker): $($Resp.StatusCode) — $(($Resp.Content)[0..200] -join '')"
-                  $Rows = ($Resp.Content -split "`n") | Where-Object { $_ -match "^\d{4}" } | ForEach-Object {
-                      $c = $_.Trim() -split ","
-                      [PSCustomObject]@{ date = $c[0]; close = [double]$c[4] }
-                  } | Sort-Object date -Descending
-                  if ($Rows.Count -eq 0) { throw "Stooq returned no data rows for $Ticker. Raw: $(($Resp.Content)[0..300] -join '')" }
+              if ($Source -eq "FMP") {
+                  # Historical daily prices from Financial Modeling Prep
+                  $R    = Invoke-RestMethod `
+                              -Uri "https://financialmodelingprep.com/api/v3/historical-price-full/$Ticker?timeseries=252&apikey=$($env:FMP_KEY)" `
+                              -ErrorAction Stop
+                  if (-not $R.historical) { throw "FMP returned no data for $Ticker" }
+                  # historical[0] = most recent
+                  $Rows = $R.historical | ForEach-Object {
+                      [PSCustomObject]@{ date = $_.date; close = [double]$_.close }
+                  }
               } else {
                   $Enc  = [Uri]::EscapeDataString($Ticker)
                   $R    = Invoke-RestMethod `
