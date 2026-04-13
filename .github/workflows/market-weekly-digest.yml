@@ -1,0 +1,90 @@
+name: Market Weekly Digest
+
+on:
+  schedule:
+    - cron: '0 6,7 * * 1'   # Monday 08:00 CET (07:00 UTC in CEST) and 08:00 CET (07:00 UTC in CET)
+  workflow_dispatch:
+
+jobs:
+  weekly-digest:
+    name: Weekly digest
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send weekly digest
+        shell: pwsh
+        env:
+          TELEGRAM_TOKEN:   ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          $TZ  = [System.TimeZoneInfo]::FindSystemTimeZoneById('Europe/Stockholm')
+          $Now = [System.TimeZoneInfo]::ConvertTimeFromUtc([DateTime]::UtcNow, $TZ)
+
+          # Guard: run exactly at 08:00 — skip the duplicate cron trigger
+          if ($Now.Hour -ne 8) {
+              Write-Host "Not 08:00 CET ($($Now.Hour)), skipping."
+              exit 0
+          }
+
+          $Indices = @(
+              @{ Name = "OMXS30";    Ticker = "^OMX";  Market = "SE" }
+              @{ Name = "OMXSPI";    Ticker = "^OMXSPI"; Market = "SE" }
+              @{ Name = "S&P 500";   Ticker = "^GSPC"; Market = "US" }
+              @{ Name = "Dow Jones"; Ticker = "^DJI";  Market = "US" }
+          )
+
+          function Get-WeeklyData([string]$Ticker) {
+              $Enc = [Uri]::EscapeDataString($Ticker)
+              $R   = Invoke-RestMethod `
+                         -Uri "https://query1.finance.yahoo.com/v8/finance/chart/$Enc?range=ytd&interval=1d" `
+                         -Headers @{ "User-Agent" = "Mozilla/5.0" } -ErrorAction Stop
+              $Cls = $R.chart.result[0].indicators.quote[0].close | Where-Object { $null -ne $_ }
+              $N   = $Cls.Count
+              # On Monday morning: $Cls[$N-1] = last Friday close, $Cls[$N-6] = previous Friday (~5 days back)
+              $Last   = $Cls[$N-1]
+              $WkAgo  = ($N -ge 6) ? $Cls[$N-6] : $Cls[0]
+              $YtdStart = $Cls[0]
+
+              function Pct($From) {
+                  if (-not $From -or $From -eq 0) { return $null }
+                  [math]::Round(($Last - $From) / $From * 100, 2)
+              }
+
+              [PSCustomObject]@{
+                  Close   = [math]::Round($Last, 2)
+                  WeekPct = Pct $WkAgo
+                  YtdPct  = Pct $YtdStart
+              }
+          }
+
+          function Fmt([object]$v) {
+              if ($null -eq $v) { return "N/A" }
+              "$(if ($v -ge 0) { '▲ +' } else { '▼ ' })$v%"
+          }
+
+          $LastFriday = $Now.AddDays(-3).ToString('yyyy-MM-dd')
+
+          $lines = @(
+              "*📊 Weekly Digest — week ending $LastFriday*"
+              ""
+          )
+
+          foreach ($idx in $Indices) {
+              try {
+                  $d      = Get-WeeklyData $idx.Ticker
+                  $lines += "*$($idx.Market): $($idx.Name)*: $($d.Close)"
+                  $lines += "  Last week: $(Fmt $d.WeekPct) | YTD: $(Fmt $d.YtdPct)"
+              } catch {
+                  $lines += "*$($idx.Market): $($idx.Name)*: unavailable ⚠️"
+              }
+              $lines += ""
+          }
+
+          $body = @{
+              chat_id    = $env:TELEGRAM_CHAT_ID
+              text       = ($lines -join "`n")
+              parse_mode = "Markdown"
+          } | ConvertTo-Json -Depth 3
+
+          Invoke-RestMethod -Uri "https://api.telegram.org/bot$($env:TELEGRAM_TOKEN)/sendMessage" `
+              -Method Post -Body $body -ContentType "application/json; charset=utf-8"
+          Write-Host "Weekly digest sent."
