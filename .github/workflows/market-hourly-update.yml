@@ -14,9 +14,10 @@ jobs:
       - name: Send market update to Telegram
         shell: pwsh
         env:
-          TELEGRAM_TOKEN:   ${{ secrets.TELEGRAM_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          TWELVEDATA_KEY:   ${{ secrets.TWELVEDATA_KEY }}
+          TELEGRAM_TOKEN:     ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID:   ${{ secrets.TELEGRAM_CHAT_ID }}
+          TWELVEDATA_KEY:     ${{ secrets.TWELVEDATA_KEY }}
+          ALPHA_VANTAGE_KEY:  ${{ secrets.ALPHA_VANTAGE_KEY }}
         run: |
           $TZ     = [System.TimeZoneInfo]::FindSystemTimeZoneById('Europe/Stockholm')
           $Now    = [System.TimeZoneInfo]::ConvertTimeFromUtc([DateTime]::UtcNow, $TZ)
@@ -31,7 +32,8 @@ jobs:
           }
 
           $Indices = @(
-              @{ Name = "Sweden (EWD)";    Ticker = "EWD";     Market = "US";     Source = "TwelveData" }
+              @{ Name = "OMXS30";          Ticker = "OMX:STO";  Market = "SE";     Source = "AlphaVantage" }
+              @{ Name = "Sweden (EWD)";     Ticker = "EWD";      Market = "US";     Source = "TwelveData" }
               @{ Name = "S&P 500 (SPY)";   Ticker = "SPY";     Market = "US";     Source = "TwelveData" }
               @{ Name = "Dow Jones (DIA)";  Ticker = "DIA";     Market = "US";     Source = "TwelveData" }
               @{ Name = "Microsoft";        Ticker = "MSFT";    Market = "US";     Source = "TwelveData" }
@@ -55,7 +57,22 @@ jobs:
           function Get-IndexData([string]$Ticker, [string]$Source) {
               $Year = $Now.Year.ToString()
 
-              if ($Source -eq "TwelveData") {
+              if ($Source -eq "AlphaVantage") {
+                  # Alpha Vantage daily time series — free tier, 25 calls/day
+                  $Parts  = $Ticker -split ":"
+                  $Symbol = $Parts[0]
+                  $Exch   = if ($Parts.Count -gt 1) { "&exchange=$($Parts[1])" } else { "" }
+                  $R      = Invoke-RestMethod `
+                                -Uri "https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=$Symbol$Exch&outputsize=full&apikey=$($env:ALPHA_VANTAGE_KEY)" `
+                                -ErrorAction Stop
+                  if ($R."Error Message" -or $R."Information") {
+                      throw "AlphaVantage: $(if ($R."Error Message") { $R."Error Message" } else { $R."Information" })"
+                  }
+                  $Ts   = $R."Time Series (Daily)"
+                  $Rows = $Ts.PSObject.Properties | Sort-Object Name -Descending | ForEach-Object {
+                      [PSCustomObject]@{ date = $_.Name; close = [double]$_.Value."4. close" }
+                  }
+              } elseif ($Source -eq "TwelveData") {
                   $Enc  = [Uri]::EscapeDataString($Ticker)
                   $R    = Invoke-RestMethod `
                               -Uri "https://api.twelvedata.com/time_series?symbol=$Enc&interval=1day&outputsize=252&apikey=$($env:TWELVEDATA_KEY)" `
