@@ -31,8 +31,8 @@ jobs:
           }
 
           $Indices = @(
-              @{ Name = "S&P 500 (SPY)";   Ticker = "SPY";     Market = "US";     Source = "TwelveData" }
-              @{ Name = "Dow Jones (DIA)";  Ticker = "DIA";     Market = "US";     Source = "TwelveData" }
+              @{ Name = "S&P 500 (ETF $)";  Ticker = "SPY";     Market = "US";     Source = "TwelveData" }
+              @{ Name = "Dow Jones (ETF $)"; Ticker = "DIA";     Market = "US";     Source = "TwelveData" }
               @{ Name = "Microsoft";        Ticker = "MSFT";    Market = "US";     Source = "TwelveData" }
               @{ Name = "Bitcoin";          Ticker = "BTC/USD"; Market = "CRYPTO"; Source = "TwelveData" }
           )
