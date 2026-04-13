@@ -15,6 +15,7 @@ jobs:
         env:
           TELEGRAM_TOKEN:   ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TWELVEDATA_KEY:   ${{ secrets.TWELVEDATA_KEY }}
         run: |
           $TZ  = [System.TimeZoneInfo]::FindSystemTimeZoneById('Europe/Stockholm')
           $Now = [System.TimeZoneInfo]::ConvertTimeFromUtc([DateTime]::UtcNow, $TZ)
@@ -26,23 +27,24 @@ jobs:
           }
 
           $Indices = @(
-              @{ Name = "OMXS30";    Ticker = "^OMX";  Market = "SE" }
-              @{ Name = "OMXSPI";    Ticker = "^OMXSPI"; Market = "SE" }
-              @{ Name = "S&P 500";   Ticker = "^GSPC"; Market = "US" }
-              @{ Name = "Dow Jones"; Ticker = "^DJI";  Market = "US" }
+              @{ Name = "S&P 500 (ETF $)";  Ticker = "SPY";     Market = "US" }
+              @{ Name = "Dow Jones (ETF $)"; Ticker = "DIA";     Market = "US" }
+              @{ Name = "Microsoft";         Ticker = "MSFT";    Market = "US" }
+              @{ Name = "Bitcoin";           Ticker = "BTC/USD"; Market = "CRYPTO" }
           )
 
           function Get-WeeklyData([string]$Ticker) {
-              $Enc = [Uri]::EscapeDataString($Ticker)
-              $R   = Invoke-RestMethod `
-                         -Uri "https://query1.finance.yahoo.com/v8/finance/chart/$Enc?range=ytd&interval=1d" `
-                         -Headers @{ "User-Agent" = "Mozilla/5.0" } -ErrorAction Stop
-              $Cls = $R.chart.result[0].indicators.quote[0].close | Where-Object { $null -ne $_ }
-              $N   = $Cls.Count
-              # On Monday morning: $Cls[$N-1] = last Friday close, $Cls[$N-6] = previous Friday (~5 days back)
-              $Last   = $Cls[$N-1]
-              $WkAgo  = ($N -ge 6) ? $Cls[$N-6] : $Cls[0]
-              $YtdStart = $Cls[0]
+              $Enc  = [Uri]::EscapeDataString($Ticker)
+              $R    = Invoke-RestMethod `
+                          -Uri "https://api.twelvedata.com/time_series?symbol=$Enc&interval=1day&outputsize=252&apikey=$($env:TWELVEDATA_KEY)" `
+                          -ErrorAction Stop
+              if ($R.status -eq "error") { throw "Twelve Data: $($R.message)" }
+              # values[0] = most recent
+              $Vals = $R.values
+              $N    = $Vals.Count
+              $Last     = [double]$Vals[0].close
+              $WkAgo    = [double]($N -ge 6 ? $Vals[5].close : $Vals[$N-1].close)
+              $YtdStart = [double]$Vals[$N-1].close
 
               function Pct($From) {
                   if (-not $From -or $From -eq 0) { return $null }
