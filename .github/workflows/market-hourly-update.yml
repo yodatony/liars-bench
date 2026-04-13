@@ -30,6 +30,14 @@ jobs:
               exit 0
           }
 
+          # Establish Yahoo Finance session and get crumb
+          $YFSession = New-Object Microsoft.PowerShell.Commands.WebRequestSession
+          $YFSession.Headers.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0 Safari/537.36")
+          Invoke-WebRequest -Uri "https://finance.yahoo.com" -WebSession $YFSession -UseBasicParsing | Out-Null
+          $Crumb = (Invoke-RestMethod -Uri "https://query1.finance.yahoo.com/v1/test/getcrumb" `
+              -WebSession $YFSession -ErrorAction Stop).Trim()
+          Write-Host "Crumb acquired: $Crumb"
+
           $Indices = @(
               @{ Name = "OMXS30";    Ticker = "^OMX";    Market = "SE" }
               @{ Name = "OMXSPI";    Ticker = "^OMXSPI"; Market = "SE" }
@@ -56,8 +64,8 @@ jobs:
           function Get-IndexData([string]$Ticker) {
               $Enc  = [Uri]::EscapeDataString($Ticker)
               $R    = Invoke-RestMethod `
-                          -Uri "https://query1.finance.yahoo.com/v8/finance/chart/$Enc?range=ytd&interval=1d" `
-                          -Headers @{ "User-Agent" = "Mozilla/5.0" } -ErrorAction Stop
+                          -Uri "https://query1.finance.yahoo.com/v8/finance/chart/$Enc?range=ytd&interval=1d&crumb=$Crumb" `
+                          -WebSession $YFSession -ErrorAction Stop
               $Meta = $R.chart.result[0].meta
               $Cls  = $R.chart.result[0].indicators.quote[0].close | Where-Object { $null -ne $_ }
               $N    = $Cls.Count
