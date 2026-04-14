@@ -16,6 +16,7 @@ jobs:
           TELEGRAM_TOKEN:     ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID:   ${{ secrets.TELEGRAM_CHAT_ID }}
           TWELVEDATA_KEY:     ${{ secrets.TWELVEDATA_KEY }}
+          FMP_KEY:            ${{ secrets.FMP_KEY }}
         run: |
           $TZ     = [System.TimeZoneInfo]::FindSystemTimeZoneById('Europe/Stockholm')
           $Now    = [System.TimeZoneInfo]::ConvertTimeFromUtc([DateTime]::UtcNow, $TZ)
@@ -25,15 +26,13 @@ jobs:
 
 
           $Indices = @(
-              @{ Name = "OMXS30";           Ticker = "OMXS30";  Market = "SE";     Exchange = "STO"; Source = "TwelveData" }
-              @{ Name = "OMXSPI";           Ticker = "OMXSPI";  Market = "SE";     Exchange = "STO"; Source = "TwelveData" }
-              @{ Name = "S&P 500 (ETF $)";  Ticker = "SPY";     Market = "US";     Exchange = "";    Source = "TwelveData" }
-              @{ Name = "Dow Jones (ETF $)"; Ticker = "DIA";     Market = "US";     Exchange = "";    Source = "TwelveData" }
-              @{ Name = "Microsoft";        Ticker = "MSFT";    Market = "US";     Exchange = "";    Source = "TwelveData" }
-              @{ Name = "Bitcoin";          Ticker = "BTC/USD"; Market = "CRYPTO"; Exchange = "";    Source = "TwelveData" }
+              @{ Name = "OMXS30";    Ticker = "%5EOMX";   Market = "SE";     Source = "FMP" }
+              @{ Name = "OMXSPI";    Ticker = "%5EOMXSPI"; Market = "SE";    Source = "FMP" }
+              @{ Name = "S&P 500";   Ticker = "%5EGSPC";  Market = "US";     Source = "FMP" }
+              @{ Name = "Dow Jones"; Ticker = "%5EDJI";   Market = "US";     Source = "FMP" }
+              @{ Name = "Microsoft"; Ticker = "MSFT";     Market = "US";     Source = "TwelveData" }
+              @{ Name = "Bitcoin";   Ticker = "BTC/USD";  Market = "CRYPTO"; Source = "TwelveData" }
           )
-          $SeIdx = @($Indices | Where-Object { $_.Market -eq "SE" })
-          $UsIdx = @($Indices | Where-Object { $_.Market -eq "US" })
 
           function Get-MarketStatus([string]$Market) {
               $T = $Hour * 60 + $Min
@@ -49,19 +48,28 @@ jobs:
               if ($Market -eq "CRYPTO") { return "Open 24/7" }
           }
 
-          function Get-IndexData([string]$Ticker, [string]$Source, [string]$Exchange) {
+          function Get-IndexData([string]$Ticker, [string]$Source) {
               $Year = $Now.Year.ToString()
 
-              $Enc  = [Uri]::EscapeDataString($Ticker)
-              $ExchangeParam = if ($Exchange) { "&exchange=$Exchange" } else { "" }
-              $R    = Invoke-RestMethod `
-                          -Uri "https://api.twelvedata.com/time_series?symbol=$Enc$ExchangeParam&interval=1day&outputsize=252&apikey=$($env:TWELVEDATA_KEY)" `
-                          -ErrorAction Stop
-              if ($R.status -eq "error") { throw "TwelveData: $($R.message)" }
-              $Rows = @($R.values | ForEach-Object {
-                  [PSCustomObject]@{ date = $_.datetime; close = [double]$_.close }
-              })
-              if ($Rows.Count -eq 0) { throw "TwelveData returned no data for $Ticker" }
+              if ($Source -eq "FMP") {
+                  $R    = Invoke-RestMethod `
+                              -Uri "https://financialmodelingprep.com/api/v3/historical-price-full/$Ticker?timeseries=252&apikey=$($env:FMP_KEY)" `
+                              -ErrorAction Stop
+                  if (-not $R.historical) { throw "FMP returned no data for $Ticker" }
+                  $Rows = @($R.historical | ForEach-Object {
+                      [PSCustomObject]@{ date = $_.date; close = [double]$_.close }
+                  })
+              } else {
+                  $Enc  = [Uri]::EscapeDataString($Ticker)
+                  $R    = Invoke-RestMethod `
+                              -Uri "https://api.twelvedata.com/time_series?symbol=$Enc&interval=1day&outputsize=252&apikey=$($env:TWELVEDATA_KEY)" `
+                              -ErrorAction Stop
+                  if ($R.status -eq "error") { throw "TwelveData: $($R.message)" }
+                  $Rows = @($R.values | ForEach-Object {
+                      [PSCustomObject]@{ date = $_.datetime; close = [double]$_.close }
+                  })
+              }
+              if ($Rows.Count -eq 0) { throw "No data returned for $Ticker" }
 
               $N   = $Rows.Count
               $Cur = $Rows[0].close
@@ -90,7 +98,7 @@ jobs:
               $out = @()
               foreach ($idx in $IdxList) {
                   try {
-                      $d      = Get-IndexData $idx.Ticker $idx.Source $idx.Exchange
+                      $d      = Get-IndexData $idx.Ticker $idx.Source
                       $status = Get-MarketStatus $idx.Market
                       $out   += "*$($idx.Market): $($idx.Name)* — $($d.Current) [$status]"
                       $out   += "  Day: $(Fmt $d.DayPct) | Week: $(Fmt $d.WeekPct) | Month: $(Fmt $d.MonthPct) | YTD: $(Fmt $d.YtdPct)"
