@@ -15,7 +15,6 @@ jobs:
         env:
           TELEGRAM_TOKEN:     ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID:   ${{ secrets.TELEGRAM_CHAT_ID }}
-          TWELVEDATA_KEY:     ${{ secrets.TWELVEDATA_KEY }}
         run: |
           $TZ     = [System.TimeZoneInfo]::FindSystemTimeZoneById('Europe/Stockholm')
           $Now    = [System.TimeZoneInfo]::ConvertTimeFromUtc([DateTime]::UtcNow, $TZ)
@@ -31,11 +30,15 @@ jobs:
           }
 
           $Indices = @(
-              @{ Name = "S&P 500 (ETF $)";  Ticker = "SPY";     Market = "US";     Source = "TwelveData" }
-              @{ Name = "Dow Jones (ETF $)"; Ticker = "DIA";     Market = "US";     Source = "TwelveData" }
-              @{ Name = "Microsoft";        Ticker = "MSFT";    Market = "US";     Source = "TwelveData" }
-              @{ Name = "Bitcoin";          Ticker = "BTC/USD"; Market = "CRYPTO"; Source = "TwelveData" }
+              @{ Name = "OMXS30";           Ticker = "^omx";    Market = "SE";     Source = "Stooq" }
+              @{ Name = "OMXSPI";           Ticker = "^omxspi"; Market = "SE";     Source = "Stooq" }
+              @{ Name = "S&P 500 (ETF $)";  Ticker = "spy.us";  Market = "US";     Source = "Stooq" }
+              @{ Name = "Dow Jones (ETF $)"; Ticker = "dia.us";  Market = "US";     Source = "Stooq" }
+              @{ Name = "Microsoft";        Ticker = "msft.us"; Market = "US";     Source = "Stooq" }
+              @{ Name = "Bitcoin";          Ticker = "btcusd";  Market = "CRYPTO"; Source = "Stooq" }
           )
+          $SeIdx = @($Indices | Where-Object { $_.Market -eq "SE" })
+          $UsIdx = @($Indices | Where-Object { $_.Market -eq "US" })
 
           function Get-MarketStatus([string]$Market) {
               $T = $Hour * 60 + $Min
@@ -54,16 +57,12 @@ jobs:
           function Get-IndexData([string]$Ticker, [string]$Source) {
               $Year = $Now.Year.ToString()
 
-              if ($Source -eq "TwelveData") {
-                  $Enc  = [Uri]::EscapeDataString($Ticker)
-                  $R    = Invoke-RestMethod `
-                              -Uri "https://api.twelvedata.com/time_series?symbol=$Enc&interval=1day&outputsize=252&apikey=$($env:TWELVEDATA_KEY)" `
-                              -ErrorAction Stop
-                  if ($R.status -eq "error") { throw "Twelve Data: $($R.message)" }
-                  $Rows = $R.values | ForEach-Object {
-                      [PSCustomObject]@{ date = $_.datetime; close = [double]$_.close }
-                  }
-              }
+              $Enc  = [Uri]::EscapeDataString($Ticker)
+              $Csv  = Invoke-RestMethod -Uri "https://stooq.com/q/d/l/?s=$Enc&i=d" -ErrorAction Stop
+              $Rows = ($Csv -split "`n") | Where-Object { $_ -match "^\d{4}" } | ForEach-Object {
+                  $c = $_ -split ","
+                  [PSCustomObject]@{ date = $c[0]; close = [double]$c[4] }
+              } | Sort-Object date -Descending
 
               $N   = $Rows.Count
               $Cur = $Rows[0].close
@@ -110,18 +109,18 @@ jobs:
               $lines += "*🔔 SE Market Open — $($Now.ToString('yyyy-MM-dd HH:mm')) CET*"
               $lines += "_US market opens at 15:30 CET_"
               $lines += ""
-              $lines += Get-Lines $Indices
+              $lines += Get-Lines $SeIdx
           }
           elseif ($Hour -eq 17 -and $Min -eq 30) {
               $lines += "*🔕 SE Market Close — $($Now.ToString('yyyy-MM-dd HH:mm')) CET*"
               $lines += "_US market closes at 22:00 CET_"
               $lines += ""
-              $lines += Get-Lines $Indices
+              $lines += Get-Lines $SeIdx
           }
           elseif ($Hour -eq 22 -and $Min -eq 0) {
               $lines += "*🔕 US Market Close — $($Now.ToString('yyyy-MM-dd HH:mm')) CET*"
               $lines += ""
-              $lines += Get-Lines $Indices
+              $lines += Get-Lines $UsIdx
           }
           else {
               $lines += "*📈 Market Update — $($Now.ToString('yyyy-MM-dd HH:mm')) CET*"
