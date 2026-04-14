@@ -15,6 +15,7 @@ jobs:
         env:
           TELEGRAM_TOKEN:     ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID:   ${{ secrets.TELEGRAM_CHAT_ID }}
+          TWELVEDATA_KEY:     ${{ secrets.TWELVEDATA_KEY }}
         run: |
           $TZ     = [System.TimeZoneInfo]::FindSystemTimeZoneById('Europe/Stockholm')
           $Now    = [System.TimeZoneInfo]::ConvertTimeFromUtc([DateTime]::UtcNow, $TZ)
@@ -24,12 +25,12 @@ jobs:
 
 
           $Indices = @(
-              @{ Name = "OMXS30";           Ticker = "%5EOMX";   Market = "SE";     Source = "Yahoo" }
-              @{ Name = "OMXSPI";           Ticker = "%5EOMXSPI"; Market = "SE";    Source = "Yahoo" }
-              @{ Name = "S&P 500 (ETF $)";  Ticker = "SPY";     Market = "US";     Source = "Yahoo" }
-              @{ Name = "Dow Jones (ETF $)"; Ticker = "DIA";     Market = "US";     Source = "Yahoo" }
-              @{ Name = "Microsoft";        Ticker = "MSFT";    Market = "US";     Source = "Yahoo" }
-              @{ Name = "Bitcoin";          Ticker = "BTC-USD"; Market = "CRYPTO"; Source = "Yahoo" }
+              @{ Name = "OMXS30";           Ticker = "OMXS30";  Market = "SE";     Source = "TwelveData" }
+              @{ Name = "OMXSPI";           Ticker = "OMXSPI";  Market = "SE";     Source = "TwelveData" }
+              @{ Name = "S&P 500 (ETF $)";  Ticker = "SPY";     Market = "US";     Source = "TwelveData" }
+              @{ Name = "Dow Jones (ETF $)"; Ticker = "DIA";     Market = "US";     Source = "TwelveData" }
+              @{ Name = "Microsoft";        Ticker = "MSFT";    Market = "US";     Source = "TwelveData" }
+              @{ Name = "Bitcoin";          Ticker = "BTC/USD"; Market = "CRYPTO"; Source = "TwelveData" }
           )
           $SeIdx = @($Indices | Where-Object { $_.Market -eq "SE" })
           $UsIdx = @($Indices | Where-Object { $_.Market -eq "US" })
@@ -51,22 +52,15 @@ jobs:
           function Get-IndexData([string]$Ticker, [string]$Source) {
               $Year = $Now.Year.ToString()
 
+              $Enc  = [Uri]::EscapeDataString($Ticker)
               $R    = Invoke-RestMethod `
-                          -Uri "https://query1.finance.yahoo.com/v8/finance/chart/$Ticker?interval=1d&range=1y" `
-                          -Headers @{ 'User-Agent' = 'Mozilla/5.0' } `
+                          -Uri "https://api.twelvedata.com/time_series?symbol=$Enc&interval=1day&outputsize=252&apikey=$($env:TWELVEDATA_KEY)" `
                           -ErrorAction Stop
-              $Meta   = $R.chart.result[0]
-              $Closes = $Meta.indicators.quote[0].close
-              $Timestamps = $Meta.timestamp
-              if (-not $Closes -or $Closes.Count -eq 0) { throw "Yahoo Finance returned no data for $Ticker" }
-              $Rows = @(for ($i = $Closes.Count - 1; $i -ge 0; $i--) {
-                  if ($null -ne $Closes[$i]) {
-                      [PSCustomObject]@{
-                          date  = [DateTimeOffset]::FromUnixTimeSeconds($Timestamps[$i]).ToString('yyyy-MM-dd')
-                          close = [double]$Closes[$i]
-                      }
-                  }
+              if ($R.status -eq "error") { throw "TwelveData: $($R.message)" }
+              $Rows = @($R.values | ForEach-Object {
+                  [PSCustomObject]@{ date = $_.datetime; close = [double]$_.close }
               })
+              if ($Rows.Count -eq 0) { throw "TwelveData returned no data for $Ticker" }
 
               $N   = $Rows.Count
               $Cur = $Rows[0].close
