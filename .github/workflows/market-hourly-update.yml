@@ -3,7 +3,7 @@ name: Market Hourly Update
 on:
   workflow_dispatch:
   schedule:
-    - cron: '15,45 13-21 * * 1-5'    # 13.00-21.00 UTC, Monday-Friday
+    - cron: '15,45 12-20 * * 1-5'    # 13.00-21.00 UTC, Monday-Friday
 
 jobs:
   send-update:
