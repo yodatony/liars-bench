@@ -2,7 +2,7 @@ name: Market Hourly Update
 
 on:
   schedule:
-    - cron: '0 13-20 * * 1-5'   # 15:00–22:00 CEST (UTC+2) / 14:00–21:00 CET (UTC+1) — covers US market hours
+    - cron: '0 8-22 * * 1-5'    # 10:00–00:00 CEST (UTC+2) / 09:00–23:00 CET (UTC+1)
   workflow_dispatch:
 
 jobs:
@@ -22,12 +22,6 @@ jobs:
           $Min    = $Now.Minute
           $Dow    = $Now.DayOfWeek.ToString()
 
-          # Guard: weekdays 15:30–22:00 CET/CEST only (US market hours)
-          $T = $Hour * 60 + $Min
-          if ($Dow -in @('Saturday','Sunday') -or $T -lt 930 -or $T -ge 1320) {
-              Write-Host "Outside US market hours ($Hour`:$($Min.ToString('00')) $Dow), skipping."
-              exit 0
-          }
 
           $Indices = @(
               @{ Name = "OMXS30";           Ticker = "^omx";    Market = "SE";     Source = "Stooq" }
@@ -109,18 +103,18 @@ jobs:
               $lines += "*🔔 SE Market Open — $($Now.ToString('yyyy-MM-dd HH:mm')) CET*"
               $lines += "_US market opens at 15:30 CET_"
               $lines += ""
-              $lines += Get-Lines $SeIdx
+              $lines += Get-Lines $Indices
           }
           elseif ($Hour -eq 17 -and $Min -eq 30) {
               $lines += "*🔕 SE Market Close — $($Now.ToString('yyyy-MM-dd HH:mm')) CET*"
               $lines += "_US market closes at 22:00 CET_"
               $lines += ""
-              $lines += Get-Lines $SeIdx
+              $lines += Get-Lines $Indices
           }
           elseif ($Hour -eq 22 -and $Min -eq 0) {
               $lines += "*🔕 US Market Close — $($Now.ToString('yyyy-MM-dd HH:mm')) CET*"
               $lines += ""
-              $lines += Get-Lines $UsIdx
+              $lines += Get-Lines $Indices
           }
           else {
               $lines += "*📈 Market Update — $($Now.ToString('yyyy-MM-dd HH:mm')) CET*"
