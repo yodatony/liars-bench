@@ -78,7 +78,7 @@ jobs:
 
           function Fmt([object]$v) {
               if ($null -eq $v) { return "N/A" }
-              "$(if ($v -ge 0) { '▲ +' } else { '▼ ' })$v%"
+              "$(if ($v -ge 0) { '🟢 +' } else { '🔴 ' })$v%"
           }
 
           function Get-Lines($IdxList) {
