@@ -93,8 +93,7 @@ jobs:
                       $d      = Get-IndexData $idx.Ticker $idx.Source
                       $status = Get-MarketStatus $idx.Market
                       $out   += "*$($idx.Market): $($idx.Name)* — $($d.Current) [$status]"
-                      $out   += "*Day: $(Fmt $d.DayPct)*"
-                      $out   += "  Week: $(FmtArrow $d.WeekPct) | Month: $(FmtArrow $d.MonthPct) | YTD: $(FmtArrow $d.YtdPct)"
+                      $out   += "*Day: $(Fmt $d.DayPct)* | Week: $(FmtArrow $d.WeekPct) | Month: $(FmtArrow $d.MonthPct) | YTD: $(FmtArrow $d.YtdPct)"
                   } catch {
                       $out   += "*$($idx.Market): $($idx.Name)* — unavailable ⚠️"
                       $out   += "  _Error: $($_.Exception.Message)_"
