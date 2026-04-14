@@ -2,7 +2,7 @@ name: Market Hourly Update
 
 on:
   schedule:
-    - cron: '0 8-22 * * 1-5'    # 10:00–00:00 CEST (UTC+2) / 09:00–23:00 CET (UTC+1)
+    - cron: '0 13-22 * * 1-5'    # 10:00–00:00 CEST (UTC+2) / 09:00–23:00 CET (UTC+1)
   workflow_dispatch:
 
 jobs:
@@ -16,7 +16,6 @@ jobs:
           TELEGRAM_TOKEN:     ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID:   ${{ secrets.TELEGRAM_CHAT_ID }}
           TWELVEDATA_KEY:     ${{ secrets.TWELVEDATA_KEY }}
-          FMP_KEY:            ${{ secrets.FMP_KEY }}
         run: |
           $TZ     = [System.TimeZoneInfo]::FindSystemTimeZoneById('Europe/Stockholm')
           $Now    = [System.TimeZoneInfo]::ConvertTimeFromUtc([DateTime]::UtcNow, $TZ)
@@ -26,12 +25,10 @@ jobs:
 
 
           $Indices = @(
-              @{ Name = "OMXS30";    Ticker = "^OMX";    Market = "SE";     Source = "FMP" }
-              @{ Name = "OMXSPI";    Ticker = "^OMXSPI"; Market = "SE";     Source = "FMP" }
-              @{ Name = "S&P 500";   Ticker = "^GSPC";   Market = "US";     Source = "FMP" }
-              @{ Name = "Dow Jones"; Ticker = "^DJI";    Market = "US";     Source = "FMP" }
-              @{ Name = "Microsoft"; Ticker = "MSFT";     Market = "US";     Source = "TwelveData" }
-              @{ Name = "Bitcoin";   Ticker = "BTC/USD";  Market = "CRYPTO"; Source = "TwelveData" }
+              @{ Name = "S&P 500 (ETF $)";  Ticker = "SPY";     Market = "US";     Source = "TwelveData" }
+              @{ Name = "Dow Jones (ETF $)"; Ticker = "DIA";     Market = "US";     Source = "TwelveData" }
+              @{ Name = "Microsoft";        Ticker = "MSFT";    Market = "US";     Source = "TwelveData" }
+              @{ Name = "Bitcoin";          Ticker = "BTC/USD"; Market = "CRYPTO"; Source = "TwelveData" }
           )
 
           function Get-MarketStatus([string]$Market) {
@@ -51,25 +48,14 @@ jobs:
           function Get-IndexData([string]$Ticker, [string]$Source) {
               $Year = $Now.Year.ToString()
 
-              if ($Source -eq "FMP") {
-                  $Enc  = [Uri]::EscapeDataString($Ticker)
-                  $R    = Invoke-RestMethod `
-                              -Uri "https://financialmodelingprep.com/api/v3/historical-price-full/$Enc`?timeseries=252&apikey=$($env:FMP_KEY)" `
-                              -ErrorAction Stop
-                  if (-not $R.historical) { throw "FMP returned no data for $Ticker" }
-                  $Rows = @($R.historical | ForEach-Object {
-                      [PSCustomObject]@{ date = $_.date; close = [double]$_.close }
-                  })
-              } else {
-                  $Enc  = [Uri]::EscapeDataString($Ticker)
-                  $R    = Invoke-RestMethod `
-                              -Uri "https://api.twelvedata.com/time_series?symbol=$Enc&interval=1day&outputsize=252&apikey=$($env:TWELVEDATA_KEY)" `
-                              -ErrorAction Stop
-                  if ($R.status -eq "error") { throw "TwelveData: $($R.message)" }
-                  $Rows = @($R.values | ForEach-Object {
-                      [PSCustomObject]@{ date = $_.datetime; close = [double]$_.close }
-                  })
-              }
+              $Enc  = [Uri]::EscapeDataString($Ticker)
+              $R    = Invoke-RestMethod `
+                          -Uri "https://api.twelvedata.com/time_series?symbol=$Enc&interval=1day&outputsize=252&apikey=$($env:TWELVEDATA_KEY)" `
+                          -ErrorAction Stop
+              if ($R.status -eq "error") { throw "TwelveData: $($R.message)" }
+              $Rows = @($R.values | ForEach-Object {
+                  [PSCustomObject]@{ date = $_.datetime; close = [double]$_.close }
+              })
               if ($Rows.Count -eq 0) { throw "No data returned for $Ticker" }
 
               $N   = $Rows.Count
