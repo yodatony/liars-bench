@@ -52,8 +52,10 @@ jobs:
               $Year = $Now.Year.ToString()
 
               $Enc  = [Uri]::EscapeDataString($Ticker)
-              $Csv  = Invoke-RestMethod -Uri "https://stooq.com/q/d/l/?s=$Enc&i=d" -ErrorAction Stop
-              $Rows = ($Csv -split "`n") | Where-Object { $_ -match "^\d{4}" } | ForEach-Object {
+              $Csv  = Invoke-RestMethod -Uri "https://stooq.com/q/d/l/?s=$Enc&i=d" `
+                          -Headers @{ 'User-Agent' = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36' } `
+                          -ErrorAction Stop
+              $Rows = @(($Csv -split "`n") | Where-Object { $_ -match "^\d{4}" } | ForEach-Object {
                   $c = $_ -split ","
                   [PSCustomObject]@{ date = $c[0]; close = [double]$c[4] }
               } | Sort-Object date -Descending
