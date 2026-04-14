@@ -2,7 +2,7 @@ name: Market Hourly Update
 
 on:
   schedule:
-    - cron: '0 13-22 * * 1-5'    # 10:00–00:00 CEST (UTC+2) / 09:00–23:00 CET (UTC+1)
+    - cron: '0 13-21 * * 1-5'    # 13.00-21.00 UTC, Monday-Friday
   workflow_dispatch:
 
 jobs:
