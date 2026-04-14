@@ -26,10 +26,10 @@ jobs:
 
 
           $Indices = @(
-              @{ Name = "OMXS30";    Ticker = "%5EOMX";   Market = "SE";     Source = "FMP" }
-              @{ Name = "OMXSPI";    Ticker = "%5EOMXSPI"; Market = "SE";    Source = "FMP" }
-              @{ Name = "S&P 500";   Ticker = "%5EGSPC";  Market = "US";     Source = "FMP" }
-              @{ Name = "Dow Jones"; Ticker = "%5EDJI";   Market = "US";     Source = "FMP" }
+              @{ Name = "OMXS30";    Ticker = "^OMX";    Market = "SE";     Source = "FMP" }
+              @{ Name = "OMXSPI";    Ticker = "^OMXSPI"; Market = "SE";     Source = "FMP" }
+              @{ Name = "S&P 500";   Ticker = "^GSPC";   Market = "US";     Source = "FMP" }
+              @{ Name = "Dow Jones"; Ticker = "^DJI";    Market = "US";     Source = "FMP" }
               @{ Name = "Microsoft"; Ticker = "MSFT";     Market = "US";     Source = "TwelveData" }
               @{ Name = "Bitcoin";   Ticker = "BTC/USD";  Market = "CRYPTO"; Source = "TwelveData" }
           )
@@ -52,8 +52,9 @@ jobs:
               $Year = $Now.Year.ToString()
 
               if ($Source -eq "FMP") {
+                  $Enc  = [Uri]::EscapeDataString($Ticker)
                   $R    = Invoke-RestMethod `
-                              -Uri "https://financialmodelingprep.com/api/v3/historical-price-full/$Ticker?timeseries=252&apikey=$($env:FMP_KEY)" `
+                              -Uri "https://financialmodelingprep.com/api/v3/historical-price-full/$Enc`?timeseries=252&apikey=$($env:FMP_KEY)" `
                               -ErrorAction Stop
                   if (-not $R.historical) { throw "FMP returned no data for $Ticker" }
                   $Rows = @($R.historical | ForEach-Object {
