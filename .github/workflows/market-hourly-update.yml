@@ -25,11 +25,11 @@ jobs:
 
 
           $Indices = @(
-              @{ Name = "S&P 500";          Ticker = "SPY";  Market = "US";     Source = "TwelveData"; Decimals = 1 }
-              @{ Name = "DJUS";  Ticker = "IYY";  Market = "US";     Source = "TwelveData"; Decimals = 1 }
-              @{ Name = "DJI"; Ticker = "DIA";  Market = "US";     Source = "TwelveData"; Decimals = 2 }
-              @{ Name = "Microsoft";                Ticker = "MSFT"; Market = "US";     Source = "TwelveData"; Decimals = 2 }
-              @{ Name = "Bitcoin";                  Ticker = "BTC/USD"; Market = "CRYPTO"; Source = "TwelveData"; Decimals = 2 }
+              @{ Name = "S&P 500";          Ticker = "SPY";  Market = "US";     Source = "TwelveData"; Multiplier = 10; Decimals = 1 }
+              @{ Name = "DJUS";  Ticker = "IYY";  Market = "US";     Source = "TwelveData"; Multiplier = 10; Decimals = 1 }
+              @{ Name = "DJI"; Ticker = "DIA";  Market = "US";     Source = "TwelveData"; Multiplier = 100; Decimals = 0 }
+              @{ Name = "Microsoft";                Ticker = "MSFT"; Market = "US";     Source = "TwelveData"; Multiplier = 1; Decimals = 2 }
+              @{ Name = "Bitcoin";                  Ticker = "BTC/USD"; Market = "CRYPTO"; Source = "TwelveData"; Multiplier = 1; Decimals = 2 }
           )
 
           function Get-MarketStatus([string]$Market) {
@@ -46,7 +46,7 @@ jobs:
               if ($Market -eq "CRYPTO") { return "Open 24/7" }
           }
 
-          function Get-IndexData([string]$Ticker, [string]$Source, [int]$Decimals = 2) {
+          function Get-IndexData([string]$Ticker, [string]$Source, [int]$Multiplier = 1, [int]$Decimals = 2) {
               $Year = $Now.Year.ToString()
 
               $Enc  = [Uri]::EscapeDataString($Ticker)
@@ -69,7 +69,7 @@ jobs:
               }
 
               [PSCustomObject]@{
-                  Current  = [math]::Round($Cur, $Decimals)
+                  Current  = [math]::Round($Cur * $Multiplier, $Decimals)
                   DayPct   = Pct $Rows[1].close
                   WeekPct  = Pct ($N -ge 6  ? $Rows[5].close  : $Rows[$N-1].close)
                   MonthPct = Pct ($N -ge 22 ? $Rows[21].close : $Rows[$N-1].close)
@@ -91,7 +91,7 @@ jobs:
               $out = @()
               foreach ($idx in $IdxList) {
                   try {
-                      $d      = Get-IndexData $idx.Ticker $idx.Source $idx.Decimals
+                      $d      = Get-IndexData $idx.Ticker $idx.Source $idx.Multiplier $idx.Decimals
                       $status = Get-MarketStatus $idx.Market
                       $out   += "*$($idx.Market): $($idx.Name)* — $($d.Current) [$status]"
                       $out   += "*Day: $(Fmt $d.DayPct)* | Week: $(FmtArrow $d.WeekPct) | Month: $(FmtArrow $d.MonthPct) | YTD: $(FmtArrow $d.YtdPct)"
