@@ -25,12 +25,12 @@ jobs:
 
 
           $Indices = @(
-              @{ Name = "OMXS30";           Ticker = "OMXS30";  Market = "SE";     Source = "TwelveData" }
-              @{ Name = "OMXSPI";           Ticker = "OMXSPI";  Market = "SE";     Source = "TwelveData" }
-              @{ Name = "S&P 500 (ETF $)";  Ticker = "SPY";     Market = "US";     Source = "TwelveData" }
-              @{ Name = "Dow Jones (ETF $)"; Ticker = "DIA";     Market = "US";     Source = "TwelveData" }
-              @{ Name = "Microsoft";        Ticker = "MSFT";    Market = "US";     Source = "TwelveData" }
-              @{ Name = "Bitcoin";          Ticker = "BTC/USD"; Market = "CRYPTO"; Source = "TwelveData" }
+              @{ Name = "OMXS30";           Ticker = "OMXS30";  Market = "SE";     Exchange = "STO"; Source = "TwelveData" }
+              @{ Name = "OMXSPI";           Ticker = "OMXSPI";  Market = "SE";     Exchange = "STO"; Source = "TwelveData" }
+              @{ Name = "S&P 500 (ETF $)";  Ticker = "SPY";     Market = "US";     Exchange = "";    Source = "TwelveData" }
+              @{ Name = "Dow Jones (ETF $)"; Ticker = "DIA";     Market = "US";     Exchange = "";    Source = "TwelveData" }
+              @{ Name = "Microsoft";        Ticker = "MSFT";    Market = "US";     Exchange = "";    Source = "TwelveData" }
+              @{ Name = "Bitcoin";          Ticker = "BTC/USD"; Market = "CRYPTO"; Exchange = "";    Source = "TwelveData" }
           )
           $SeIdx = @($Indices | Where-Object { $_.Market -eq "SE" })
           $UsIdx = @($Indices | Where-Object { $_.Market -eq "US" })
@@ -49,12 +49,13 @@ jobs:
               if ($Market -eq "CRYPTO") { return "Open 24/7" }
           }
 
-          function Get-IndexData([string]$Ticker, [string]$Source) {
+          function Get-IndexData([string]$Ticker, [string]$Source, [string]$Exchange) {
               $Year = $Now.Year.ToString()
 
               $Enc  = [Uri]::EscapeDataString($Ticker)
+              $ExchangeParam = if ($Exchange) { "&exchange=$Exchange" } else { "" }
               $R    = Invoke-RestMethod `
-                          -Uri "https://api.twelvedata.com/time_series?symbol=$Enc&interval=1day&outputsize=252&apikey=$($env:TWELVEDATA_KEY)" `
+                          -Uri "https://api.twelvedata.com/time_series?symbol=$Enc$ExchangeParam&interval=1day&outputsize=252&apikey=$($env:TWELVEDATA_KEY)" `
                           -ErrorAction Stop
               if ($R.status -eq "error") { throw "TwelveData: $($R.message)" }
               $Rows = @($R.values | ForEach-Object {
@@ -89,7 +90,7 @@ jobs:
               $out = @()
               foreach ($idx in $IdxList) {
                   try {
-                      $d      = Get-IndexData $idx.Ticker $idx.Source
+                      $d      = Get-IndexData $idx.Ticker $idx.Source $idx.Exchange
                       $status = Get-MarketStatus $idx.Market
                       $out   += "*$($idx.Market): $($idx.Name)* — $($d.Current) [$status]"
                       $out   += "  Day: $(Fmt $d.DayPct) | Week: $(Fmt $d.WeekPct) | Month: $(Fmt $d.MonthPct) | YTD: $(Fmt $d.YtdPct)"
