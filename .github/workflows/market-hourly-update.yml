@@ -24,12 +24,12 @@ jobs:
 
 
           $Indices = @(
-              @{ Name = "OMXS30";           Ticker = "^omx";    Market = "SE";     Source = "Stooq" }
-              @{ Name = "OMXSPI";           Ticker = "^omxspi"; Market = "SE";     Source = "Stooq" }
-              @{ Name = "S&P 500 (ETF $)";  Ticker = "spy.us";  Market = "US";     Source = "Stooq" }
-              @{ Name = "Dow Jones (ETF $)"; Ticker = "dia.us";  Market = "US";     Source = "Stooq" }
-              @{ Name = "Microsoft";        Ticker = "msft.us"; Market = "US";     Source = "Stooq" }
-              @{ Name = "Bitcoin";          Ticker = "btcusd";  Market = "CRYPTO"; Source = "Stooq" }
+              @{ Name = "OMXS30";           Ticker = "%5EOMX";   Market = "SE";     Source = "Yahoo" }
+              @{ Name = "OMXSPI";           Ticker = "%5EOMXSPI"; Market = "SE";    Source = "Yahoo" }
+              @{ Name = "S&P 500 (ETF $)";  Ticker = "SPY";     Market = "US";     Source = "Yahoo" }
+              @{ Name = "Dow Jones (ETF $)"; Ticker = "DIA";     Market = "US";     Source = "Yahoo" }
+              @{ Name = "Microsoft";        Ticker = "MSFT";    Market = "US";     Source = "Yahoo" }
+              @{ Name = "Bitcoin";          Ticker = "BTC-USD"; Market = "CRYPTO"; Source = "Yahoo" }
           )
           $SeIdx = @($Indices | Where-Object { $_.Market -eq "SE" })
           $UsIdx = @($Indices | Where-Object { $_.Market -eq "US" })
@@ -51,15 +51,22 @@ jobs:
           function Get-IndexData([string]$Ticker, [string]$Source) {
               $Year = $Now.Year.ToString()
 
-              $Enc  = [Uri]::EscapeDataString($Ticker)
-              $Csv  = Invoke-RestMethod -Uri "https://stooq.com/q/d/l/?s=$Enc&i=d" `
-                          -Headers @{ 'User-Agent' = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36' } `
+              $R    = Invoke-RestMethod `
+                          -Uri "https://query1.finance.yahoo.com/v8/finance/chart/$Ticker?interval=1d&range=1y" `
+                          -Headers @{ 'User-Agent' = 'Mozilla/5.0' } `
                           -ErrorAction Stop
-              $Rows = @(($Csv -split "`n") | Where-Object { $_ -match "^\d{4}" } | ForEach-Object {
-                  $c = $_ -split ","
-                  [PSCustomObject]@{ date = $c[0]; close = [double]$c[4] }
-              } | Sort-Object date -Descending)
-              if ($Rows.Count -eq 0) { throw "Stooq returned no data for $Ticker" }
+              $Meta   = $R.chart.result[0]
+              $Closes = $Meta.indicators.quote[0].close
+              $Timestamps = $Meta.timestamp
+              if (-not $Closes -or $Closes.Count -eq 0) { throw "Yahoo Finance returned no data for $Ticker" }
+              $Rows = @(for ($i = $Closes.Count - 1; $i -ge 0; $i--) {
+                  if ($null -ne $Closes[$i]) {
+                      [PSCustomObject]@{
+                          date  = [DateTimeOffset]::FromUnixTimeSeconds($Timestamps[$i]).ToString('yyyy-MM-dd')
+                          close = [double]$Closes[$i]
+                      }
+                  }
+              })
 
               $N   = $Rows.Count
               $Cur = $Rows[0].close
