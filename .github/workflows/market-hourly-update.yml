@@ -58,7 +58,8 @@ jobs:
               $Rows = @(($Csv -split "`n") | Where-Object { $_ -match "^\d{4}" } | ForEach-Object {
                   $c = $_ -split ","
                   [PSCustomObject]@{ date = $c[0]; close = [double]$c[4] }
-              } | Sort-Object date -Descending
+              } | Sort-Object date -Descending)
+              if ($Rows.Count -eq 0) { throw "Stooq returned no data for $Ticker" }
 
               $N   = $Rows.Count
               $Cur = $Rows[0].close
