@@ -81,6 +81,11 @@ jobs:
               "$(if ($v -ge 0) { '🟢 +' } else { '🔴 ' })$v%"
           }
 
+          function FmtArrow([object]$v) {
+              if ($null -eq $v) { return "N/A" }
+              "$(if ($v -ge 0) { '▲ +' } else { '▼ ' })$v%"
+          }
+
           function Get-Lines($IdxList) {
               $out = @()
               foreach ($idx in $IdxList) {
@@ -88,8 +93,8 @@ jobs:
                       $d      = Get-IndexData $idx.Ticker $idx.Source
                       $status = Get-MarketStatus $idx.Market
                       $out   += "*$($idx.Market): $($idx.Name)* — $($d.Current) [$status]"
-                      $out   += "  *Day: $(Fmt $d.DayPct)*"
-                      $out   += "  Week: $(Fmt $d.WeekPct) | Month: $(Fmt $d.MonthPct) | YTD: $(Fmt $d.YtdPct)"
+                      $out   += "*Day: $(Fmt $d.DayPct)*"
+                      $out   += "  Week: $(FmtArrow $d.WeekPct) | Month: $(FmtArrow $d.MonthPct) | YTD: $(FmtArrow $d.YtdPct)"
                   } catch {
                       $out   += "*$($idx.Market): $($idx.Name)* — unavailable ⚠️"
                       $out   += "  _Error: $($_.Exception.Message)_"
