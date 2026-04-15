@@ -1,9 +1,9 @@
 name: Market Weekly Digest
 
 on:
-  schedule:
-    - cron: '0 6,7 * * 1'   # Monday 08:00 CET (07:00 UTC in CEST) and 08:00 CET (07:00 UTC in CET)
   workflow_dispatch:
+  schedule:
+    - cron: '0 11 * * 0'   # Monday 6:00 AM UTC
 
 jobs:
   weekly-digest:
@@ -20,17 +20,12 @@ jobs:
           $TZ  = [System.TimeZoneInfo]::FindSystemTimeZoneById('Europe/Stockholm')
           $Now = [System.TimeZoneInfo]::ConvertTimeFromUtc([DateTime]::UtcNow, $TZ)
 
-          # Guard: run exactly at 08:00 — skip the duplicate cron trigger
-          if ($Now.Hour -ne 8) {
-              Write-Host "Not 08:00 CET ($($Now.Hour)), skipping."
-              exit 0
-          }
-
           $Indices = @(
-              @{ Name = "S&P 500 (ETF $)";  Ticker = "SPY";     Market = "US" }
-              @{ Name = "Dow Jones (ETF $)"; Ticker = "DIA";     Market = "US" }
-              @{ Name = "Microsoft";         Ticker = "MSFT";    Market = "US" }
-              @{ Name = "Bitcoin";           Ticker = "BTC/USD"; Market = "CRYPTO" }
+              @{ Name = "S&P 500";          Ticker = "SPY";  Market = "US";     Source = "TwelveData"; Multiplier = 10; Decimals = 1 }
+              @{ Name = "DJUS";  Ticker = "IYY";  Market = "US";     Source = "TwelveData"; Multiplier = 10; Decimals = 1 }
+              @{ Name = "DJI"; Ticker = "DIA";  Market = "US";     Source = "TwelveData"; Multiplier = 100; Decimals = 0 }
+              @{ Name = "Microsoft";                Ticker = "MSFT"; Market = "US";     Source = "TwelveData"; Multiplier = 1; Decimals = 2 }
+              @{ Name = "Bitcoin";                  Ticker = "BTC/USD"; Market = "CRYPTO"; Source = "TwelveData"; Multiplier = 1; Decimals = 2 }
           )
 
           function Get-WeeklyData([string]$Ticker) {

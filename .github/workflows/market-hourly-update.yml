@@ -1,13 +1,12 @@
-name: Market Hourly Update
+name: market-hourly-update
 
 on:
   workflow_dispatch:
   schedule:
-    - cron: '15,45 12-20 * * 1-5'    # 12.00-20.00 UTC, Monday-Friday
+    - cron: '30 6-20 * * 1-5'    # 12.00-20.00 UTC, Monday-Friday
 
 jobs:
   send-update:
-    name: Send update
     runs-on: ubuntu-latest
     steps:
       - name: Send market update to Telegram
