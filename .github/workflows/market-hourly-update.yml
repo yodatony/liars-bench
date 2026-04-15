@@ -22,8 +22,7 @@ jobs:
 
 
           $Indices = @(
-              @{ Name = "S&P 500 Index";    Ticker = "SPX";      Market = "US";     Source = "TwelveData"; Multiplier = 1;   Decimals = 0 }
-              @{ Name = "S&P 500 (ETF $)";  Ticker = "SPY";      Market = "US";     Source = "TwelveData"; Multiplier = 10;  Decimals = 1 }
+              @{ Name = "S&P 500";          Ticker = "SPY";      Market = "US";     Source = "TwelveData"; Multiplier = 10;  Decimals = 1 }
               @{ Name = "DJUS";             Ticker = "IYY";      Market = "US";     Source = "TwelveData"; Multiplier = 10;  Decimals = 1 }
               @{ Name = "DJI";              Ticker = "DIA";      Market = "US";     Source = "TwelveData"; Multiplier = 100; Decimals = 0 }
               @{ Name = "Microsoft";        Ticker = "MSFT";     Market = "US";     Source = "TwelveData"; Multiplier = 1;   Decimals = 2 }
