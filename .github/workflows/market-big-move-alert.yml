@@ -58,7 +58,8 @@ jobs:
           if ($Alerts.Count -eq 0) { Write-Host "No big moves detected."; exit 0 }
 
           $lines = @(
-              "<b>⚠️ Big Move Alert — $($Now.ToString('yyyy-MM-dd HH:mm')) CET</b>"
+              "<b>⚠️ Big Move Alert</b>"
+              "<b>$($Now.ToString('yyyy-MM-dd HH:mm')) CET</b>"
               ""
           ) + $Alerts + @(
               ""

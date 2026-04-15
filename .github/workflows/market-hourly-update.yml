@@ -120,7 +120,8 @@ jobs:
               $lines += Get-Lines $Indices
           }
           else {
-              $lines += "<b>📈 Market Update — $($Now.ToString('yyyy-MM-dd HH:mm')) CET</b>"
+              $lines += "<b>📈 Market Update</b>"
+              $lines += "$($Now.ToString('yyyy-MM-dd HH:mm')) CET"
               $lines += ""
               $lines += Get-Lines $Indices
           }
