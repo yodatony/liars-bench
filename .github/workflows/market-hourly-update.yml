@@ -29,20 +29,6 @@ jobs:
               @{ Name = "Bitcoin";                  Ticker = "BTC/USD"; Market = "CRYPTO"; Source = "TwelveData"; Multiplier = 1; Decimals = 2 }
           )
 
-          function Get-MarketStatus([string]$Market) {
-              $T = $Hour * 60 + $Min
-              if ($Market -eq "SE") {
-                  if ($T -ge 540 -and $T -lt 1050) { return "Open" }
-                  return "Closed"
-              }
-              if ($Market -eq "US") {
-                  if ($T -lt 930)  { return "Opens at 15:30 CET" }
-                  if ($T -lt 1320) { return "Open" }
-                  return "Closed"
-              }
-              if ($Market -eq "CRYPTO") { return "Open 24/7" }
-          }
-
           function Get-IndexData([string]$Ticker, [string]$Source, [int]$Multiplier = 1, [int]$Decimals = 2) {
               $Year = $Now.Year.ToString()
 
@@ -101,19 +87,7 @@ jobs:
           }
 
           $lines = @()
-          if ($Hour -eq 9 -and $Min -eq 0) {
-              $lines += "<b>🔔 SE Market Open — $($Now.ToString('yyyy-MM-dd HH:mm')) CET</b>"
-              $lines += "<i>US market opens at 15:30 CET</i>"
-              $lines += ""
-              $lines += Get-Lines $Indices
-          }
-          elseif ($Hour -eq 17 -and $Min -eq 30) {
-              $lines += "<b>🔕 SE Market Close — $($Now.ToString('yyyy-MM-dd HH:mm')) CET</b>"
-              $lines += "<i>US market closes at 22:00 CET</i>"
-              $lines += ""
-              $lines += Get-Lines $Indices
-          }
-          elseif ($Hour -eq 22 -and $Min -eq 0) {
+          if ($Hour -eq 22 -and $Min -eq 0) {
               $lines += "<b>🔕 US Market Close — $($Now.ToString('yyyy-MM-dd HH:mm')) CET</b>"
               $lines += ""
               $lines += Get-Lines $Indices
