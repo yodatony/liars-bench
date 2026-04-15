@@ -44,7 +44,7 @@ jobs:
                   $Price = [math]::Round([double]$R.close, 2)
 
                   if ([math]::Abs($Pct) -ge $Threshold) {
-                      $Arrow   = if ($Pct -ge 0) { "▲ +$Pct%" } else { "▼ $Pct%" }
+                      $Arrow   = if ($Pct -ge 0) { "🟢 +$Pct%" } else { "🔴 $Pct%" }
                       $Alerts += "<b>$($idx.Name)</b>: $Price ($Arrow)"
                   }
               } catch {
