@@ -30,7 +30,9 @@ jobs:
 
           $Alerts = @()
           foreach ($idx in $Indices) {
-              if ($T -lt $idx.OpenFrom -or $T -ge $idx.OpenTo) { continue }
+              $OutsideHours = ($T -lt 930 -or $T -ge 1320) -and $idx.Market -ne "CRYPTO"
+              $IsWeekend    = $Dow -in @('Saturday','Sunday') -and $idx.Market -ne "CRYPTO"
+              if ($OutsideHours -or $IsWeekend) { continue }
 
               try {
                   $Enc  = [Uri]::EscapeDataString($idx.Ticker)
@@ -43,7 +45,7 @@ jobs:
 
                   if ([math]::Abs($Pct) -ge $Threshold) {
                       $Arrow   = if ($Pct -ge 0) { "▲ +$Pct%" } else { "▼ $Pct%" }
-                      $Alerts += "*$($idx.Name)*: $Price ($Arrow)"
+                      $Alerts += "<b>$($idx.Name)</b>: $Price ($Arrow)"
                   }
               } catch {
                   Write-Warning "Failed $($idx.Name): $_"
