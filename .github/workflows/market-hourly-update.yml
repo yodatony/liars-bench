@@ -126,7 +126,6 @@ jobs:
               $lines += Get-Lines $Indices
           }
 
-          $lines += ""
           $lines += "<u><i>repo liars-bench</i></u>"
 
           $body = @{
