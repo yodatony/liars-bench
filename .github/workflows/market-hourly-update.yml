@@ -90,11 +90,11 @@ jobs:
                   try {
                       $d      = Get-IndexData $idx.Ticker $idx.Source $idx.Multiplier $idx.Decimals
                       $status = Get-MarketStatus $idx.Market
-                      $out   += "*$($idx.Market): $($idx.Name)* — $($d.Current) [$status]"
-                      $out   += "*Day: $(Fmt $d.DayPct)* | Week: $(FmtArrow $d.WeekPct) | Month: $(FmtArrow $d.MonthPct) | YTD: $(FmtArrow $d.YtdPct)"
+                      $out   += "<b>$($idx.Market): $($idx.Name)</b> — $($d.Current) [$status]"
+                      $out   += "<b>Day: $(Fmt $d.DayPct)</b> | Week: $(FmtArrow $d.WeekPct) | Month: $(FmtArrow $d.MonthPct) | YTD: $(FmtArrow $d.YtdPct)"
                   } catch {
-                      $out   += "*$($idx.Market): $($idx.Name)* — unavailable ⚠️"
-                      $out   += "  _Error: $($_.Exception.Message)_"
+                      $out   += "<b>$($idx.Market): $($idx.Name)</b> — unavailable ⚠️"
+                      $out   += "  <i>Error: $($_.Exception.Message)</i>"
                   }
                   $out += ""
               }
@@ -103,32 +103,35 @@ jobs:
 
           $lines = @()
           if ($Hour -eq 9 -and $Min -eq 0) {
-              $lines += "*🔔 SE Market Open — $($Now.ToString('yyyy-MM-dd HH:mm')) CET*"
-              $lines += "_US market opens at 15:30 CET_"
+              $lines += "<b>🔔 SE Market Open — $($Now.ToString('yyyy-MM-dd HH:mm')) CET</b>"
+              $lines += "<i>US market opens at 15:30 CET</i>"
               $lines += ""
               $lines += Get-Lines $Indices
           }
           elseif ($Hour -eq 17 -and $Min -eq 30) {
-              $lines += "*🔕 SE Market Close — $($Now.ToString('yyyy-MM-dd HH:mm')) CET*"
-              $lines += "_US market closes at 22:00 CET_"
+              $lines += "<b>🔕 SE Market Close — $($Now.ToString('yyyy-MM-dd HH:mm')) CET</b>"
+              $lines += "<i>US market closes at 22:00 CET</i>"
               $lines += ""
               $lines += Get-Lines $Indices
           }
           elseif ($Hour -eq 22 -and $Min -eq 0) {
-              $lines += "*🔕 US Market Close — $($Now.ToString('yyyy-MM-dd HH:mm')) CET*"
+              $lines += "<b>🔕 US Market Close — $($Now.ToString('yyyy-MM-dd HH:mm')) CET</b>"
               $lines += ""
               $lines += Get-Lines $Indices
           }
           else {
-              $lines += "*📈 Market Update — $($Now.ToString('yyyy-MM-dd HH:mm')) CET*"
+              $lines += "<b>📈 Market Update — $($Now.ToString('yyyy-MM-dd HH:mm')) CET</b>"
               $lines += ""
               $lines += Get-Lines $Indices
           }
 
+          $lines += ""
+          $lines += "<u><i>repo liars-bench</i></u>"
+
           $body = @{
               chat_id    = $env:TELEGRAM_CHAT_ID
               text       = ($lines -join "`n")
-              parse_mode = "Markdown"
+              parse_mode = "HTML"
           } | ConvertTo-Json -Depth 3
 
           Invoke-RestMethod -Uri "https://api.telegram.org/bot$($env:TELEGRAM_TOKEN)/sendMessage" `

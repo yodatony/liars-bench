@@ -58,17 +58,19 @@ jobs:
           if ($Alerts.Count -eq 0) { Write-Host "No big moves detected."; exit 0 }
 
           $lines = @(
-              "*⚠️ Big Move Alert — $($Now.ToString('yyyy-MM-dd HH:mm')) CET*"
+              "<b>⚠️ Big Move Alert — $($Now.ToString('yyyy-MM-dd HH:mm')) CET</b>"
               ""
           ) + $Alerts + @(
               ""
-              "_Intraday move ≥ $Threshold% from previous close_"
+              "<i>Intraday move ≥ $Threshold% from previous close</i>"
+              ""
+              "<u><i>repo liars-bench</i></u>"
           )
 
           $body = @{
               chat_id    = $env:TELEGRAM_CHAT_ID
               text       = ($lines -join "`n")
-              parse_mode = "Markdown"
+              parse_mode = "HTML"
           } | ConvertTo-Json -Depth 3
 
           Invoke-RestMethod -Uri "https://api.telegram.org/bot$($env:TELEGRAM_TOKEN)/sendMessage" `
