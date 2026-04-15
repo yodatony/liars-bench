@@ -89,8 +89,7 @@ jobs:
               foreach ($idx in $IdxList) {
                   try {
                       $d      = Get-IndexData $idx.Ticker $idx.Source $idx.Multiplier $idx.Decimals
-                      $status = Get-MarketStatus $idx.Market
-                      $out   += "<b>$($idx.Market): $($idx.Name)</b> — $($d.Current) [$status]"
+                      $out   += "<b>$($idx.Market): $($idx.Name)</b> — $($d.Current)"
                       $out   += "<b>Day: $(Fmt $d.DayPct)</b> | Week: $(FmtArrow $d.WeekPct) | Month: $(FmtArrow $d.MonthPct) | YTD: $(FmtArrow $d.YtdPct)"
                   } catch {
                       $out   += "<b>$($idx.Market): $($idx.Name)</b> — unavailable ⚠️"
