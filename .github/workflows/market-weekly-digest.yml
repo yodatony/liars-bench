@@ -1,4 +1,4 @@
-name: Market Weekly Digest
+name: market-weekly-digest
 
 on:
   workflow_dispatch:
