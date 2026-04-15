@@ -3,7 +3,7 @@ name: market-big-move-alert
 on:
   workflow_dispatch:
   schedule:
-    - cron: '15,45 6-20 * * 1-5'   # Every 30 min during US market hours (UTC)
+    - cron: '15,45 6-20 * * 1-5'
 
 jobs:
   check-moves:
