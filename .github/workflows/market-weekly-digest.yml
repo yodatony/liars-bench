@@ -61,25 +61,27 @@ jobs:
           $LastFriday = $Now.AddDays(-3).ToString('yyyy-MM-dd')
 
           $lines = @(
-              "*📊 Weekly Digest — week ending $LastFriday*"
+              "<b>📊 Weekly Digest — week ending $LastFriday</b>"
               ""
           )
 
           foreach ($idx in $Indices) {
               try {
                   $d      = Get-WeeklyData $idx.Ticker
-                  $lines += "*$($idx.Market): $($idx.Name)*: $($d.Close)"
+                  $lines += "<b>$($idx.Market): $($idx.Name)</b>: $($d.Close)"
                   $lines += "  Last week: $(Fmt $d.WeekPct) | YTD: $(Fmt $d.YtdPct)"
               } catch {
-                  $lines += "*$($idx.Market): $($idx.Name)*: unavailable ⚠️"
+                  $lines += "<b>$($idx.Market): $($idx.Name)</b>: unavailable ⚠️"
               }
               $lines += ""
           }
+          
+          $lines += "<u><i>repo liars-bench</i></u>"
 
           $body = @{
               chat_id    = $env:TELEGRAM_CHAT_ID
               text       = ($lines -join "`n")
-              parse_mode = "Markdown"
+              parse_mode = "HTML"
           } | ConvertTo-Json -Depth 3
 
           Invoke-RestMethod -Uri "https://api.telegram.org/bot$($env:TELEGRAM_TOKEN)/sendMessage" `
