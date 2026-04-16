@@ -57,11 +57,11 @@ jobs:
               "$(if ($v -ge 0) { '▲ +' } else { '▼ ' })$v%"
           }
 
-          $LastFriday = $Now.AddDays(-3).ToString('yyyy-MM-dd')
+          $LastFriday = $Now.AddDays(-2).ToString('yyyy-MM-dd')
 
           $lines = @(
               "<b>📊 Weekly Digest</b>"
-              "<b>week ending $LastFriday</b>"
+              "Week ending $LastFriday"
               ""
           )
 
@@ -69,7 +69,7 @@ jobs:
               try {
                   $d      = Get-WeeklyData $idx.Ticker
                   $lines += "<b>$($idx.Market): $($idx.Name)</b>: $($d.Close)"
-                  $lines += "  Last week: $(Fmt $d.WeekPct) | YTD: $(Fmt $d.YtdPct)"
+                  $lines += "Last week: $(Fmt $d.WeekPct) | YTD: $(Fmt $d.YtdPct)"
               } catch {
                   $lines += "<b>$($idx.Market): $($idx.Name)</b>: unavailable ⚠️"
               }
