@@ -38,7 +38,9 @@ jobs:
               $N    = $Vals.Count
               $Last     = [double]$Vals[0].close
               $WkAgo    = [double]($N -ge 6 ? $Vals[5].close : $Vals[$N-1].close)
-              $YtdStart = [double]$Vals[$N-1].close
+              $Year     = $Now.Year.ToString()
+              $YtdRow   = $Vals | Where-Object { $_.datetime -like "$Year*" } | Select-Object -Last 1
+              $YtdStart = if ($YtdRow) { [double]$YtdRow.close } else { $null }
 
               function Pct($From) {
                   if (-not $From -or $From -eq 0) { return $null }
