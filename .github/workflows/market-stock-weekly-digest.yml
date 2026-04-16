@@ -1,0 +1,89 @@
+name: market-stock-weekly-digest
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '53 10 * * 0'
+
+jobs:
+  weekly-digest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send weekly digest
+        shell: pwsh
+        env:
+          TELEGRAM_TOKEN:   ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TWELVEDATA_KEY:   ${{ secrets.TWELVEDATA_KEY }}
+        run: |
+          $TZ  = [System.TimeZoneInfo]::FindSystemTimeZoneById('Europe/Stockholm')
+          $Now = [System.TimeZoneInfo]::ConvertTimeFromUtc([DateTime]::UtcNow, $TZ)
+
+          $Indices = @(
+              @{ Name = "S&P 500 (ETF)";          Ticker = "SPY";      Market = "US";     Source = "TwelveData" }
+              @{ Name = "DJUS (ETF)";             Ticker = "IYY";      Market = "US";     Source = "TwelveData" }
+              @{ Name = "DJI (ETF)";              Ticker = "DIA";      Market = "US";     Source = "TwelveData" }
+          )
+
+          function Get-WeeklyData([string]$Ticker) {
+              $Enc  = [Uri]::EscapeDataString($Ticker)
+              $R    = Invoke-RestMethod `
+                          -Uri "https://api.twelvedata.com/time_series?symbol=$Enc&interval=1day&outputsize=252&apikey=$($env:TWELVEDATA_KEY)" `
+                          -ErrorAction Stop
+              if ($R.status -eq "error") { throw "Twelve Data: $($R.message)" }
+              # values[0] = most recent
+              $Vals = $R.values
+              $N    = $Vals.Count
+              $Last     = [double]$Vals[0].close
+              $WkAgo    = [double]($N -ge 6 ? $Vals[5].close : $Vals[$N-1].close)
+              $Year     = $Now.Year.ToString()
+              $YtdRow   = $Vals | Where-Object { $_.datetime -like "$Year*" } | Select-Object -Last 1
+              $YtdStart = if ($YtdRow) { [double]$YtdRow.close } else { $null }
+
+              function Pct($From) {
+                  if (-not $From -or $From -eq 0) { return $null }
+                  [math]::Round(($Last - $From) / $From * 100, 2)
+              }
+
+              [PSCustomObject]@{
+                  Close   = [math]::Round($Last, 2)
+                  WeekPct = Pct $WkAgo
+                  YtdPct  = Pct $YtdStart
+              }
+          }
+
+          function Fmt([object]$v) {
+              if ($null -eq $v) { return "N/A" }
+              "$(if ($v -ge 0) { '▲ +' } else { '▼ ' })$v%"
+          }
+
+          $LastFriday = $Now.AddDays(-2).ToString('yyyy-MM-dd')
+
+          $lines = @(
+              "<b>📊 Weekly US Stock Market Digest</b>"
+              "<i>Week ending $LastFriday</i>"
+              ""
+          )
+
+          foreach ($idx in $Indices) {
+              try {
+                  $d      = Get-WeeklyData $idx.Ticker
+                  $lines += "<b>$($idx.Market): $($idx.Name)</b>: $($d.Close)"
+                  $lines += "Last week: $(Fmt $d.WeekPct) | YTD: $(Fmt $d.YtdPct)"
+              } catch {
+                  $lines += "<b>$($idx.Market): $($idx.Name)</b>: unavailable ⚠️"
+              }
+              $lines += ""
+          }
+          
+          $lines += "<u><i>Via GitHub, repo liars-bench</i></u>"
+
+          $body = @{
+              chat_id    = $env:TELEGRAM_CHAT_ID
+              text       = ($lines -join "`n")
+              parse_mode = "HTML"
+          } | ConvertTo-Json -Depth 3
+
+          Invoke-RestMethod -Uri "https://api.telegram.org/bot$($env:TELEGRAM_TOKEN)/sendMessage" `
+              -Method Post -Body $body -ContentType "application/json; charset=utf-8"
+          Write-Host "Weekly digest sent."
