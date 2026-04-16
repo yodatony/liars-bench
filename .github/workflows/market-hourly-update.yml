@@ -78,7 +78,7 @@ jobs:
               $out = @()
               foreach ($idx in $IdxList) {
                   $status = switch ($idx.Market) {
-                      'CRYPTO' { 'Open 24/7' }
+                      'CRYPTO' { 'Open' }
                       'US'     { if ($UsMarketOpen) { 'Open' } else { 'Closed' } }
                       default  { '' }
                   }
