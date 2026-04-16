@@ -2,8 +2,6 @@ name: market-hourly-update
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '52 6-20 * * *'
 
 jobs:
   send-update:
