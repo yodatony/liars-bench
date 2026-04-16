@@ -77,7 +77,7 @@ jobs:
               $lines += ""
           }
           
-          $lines += "<u><i>repo liars-bench</i></u>"
+          $lines += "<u><i>Via GitHub, repo liars-bench</i></u>"
 
           $body = @{
               chat_id    = $env:TELEGRAM_CHAT_ID

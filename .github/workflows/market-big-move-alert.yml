@@ -62,7 +62,7 @@ jobs:
               ""
               "<i>Intraday move ≥ $Threshold% from previous close</i>"
               ""
-              "<u><i>repo liars-bench</i></u>"
+              "<u><i>Via GitHub, repo liars-bench</i></u>"
           )
 
           $body = @{
