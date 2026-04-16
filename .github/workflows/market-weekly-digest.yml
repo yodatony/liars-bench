@@ -1,4 +1,4 @@
-name: market-weekly-digest
+name: market-index-weekly-digest
 
 on:
   workflow_dispatch:
@@ -23,8 +23,6 @@ jobs:
               @{ Name = "S&P 500 (ETF)";          Ticker = "SPY";      Market = "US";     Source = "TwelveData" }
               @{ Name = "DJUS (ETF)";             Ticker = "IYY";      Market = "US";     Source = "TwelveData" }
               @{ Name = "DJI (ETF)";              Ticker = "DIA";      Market = "US";     Source = "TwelveData" }
-              @{ Name = "Microsoft";              Ticker = "MSFT";     Market = "US";     Source = "TwelveData" }
-              @{ Name = "Bitcoin";                Ticker = "BTC/USD";  Market = "CRYPTO"; Source = "TwelveData" }
           )
 
           function Get-WeeklyData([string]$Ticker) {
@@ -62,7 +60,7 @@ jobs:
           $LastFriday = $Now.AddDays(-2).ToString('yyyy-MM-dd')
 
           $lines = @(
-              "<b>📊 Weekly US Market Digest</b>"
+              "<b>📊 Weekly US Index Market Digest</b>"
               "<i>Week ending $LastFriday</i>"
               ""
           )
