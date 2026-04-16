@@ -97,7 +97,7 @@ jobs:
 
           $lines = @()
           if ($Hour -eq 22 -and $Min -eq 0) {
-              $lines += "<b>🔕 US Market Close — <i>$($Now.ToString('yyyy-MM-dd HH:mm')) CET</i></b>"
+              $lines += "<b>🔕 US Market Close 🔕 — <i>$($Now.ToString('yyyy-MM-dd HH:mm')) CET</i></b>"
               $lines += $marketStatus
               $lines += ""
               $lines += Get-Lines $Indices
