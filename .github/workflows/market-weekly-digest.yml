@@ -7,7 +7,6 @@ on:
 
 jobs:
   weekly-digest:
-    name: Weekly digest
     runs-on: ubuntu-latest
     steps:
       - name: Send weekly digest
