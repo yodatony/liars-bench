@@ -90,7 +90,7 @@ jobs:
               return $out
           }
 
-          $usStatus     = if ($UsMarketOpen) { 'Open �' } else { 'Closed 🔕' }
+          $usStatus     = if ($UsMarketOpen) { 'Open 🔔' } else { 'Closed 🔕' }
           $marketStatus = @("US Market: $usStatus", "Crypto: Open 24/7 🔔")
 
           $lines = @()
