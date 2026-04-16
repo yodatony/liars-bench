@@ -93,7 +93,7 @@ jobs:
           }
 
           $usStatus     = if ($UsMarketOpen) { '� Open' } else { '🔕 Closed' }
-          $marketStatus = "US Market: $usStatus | Crypto: 🔔 24/7"
+          $marketStatus = @("US Market: $usStatus", "Crypto: 🔔 24/7")
 
           $lines = @()
           if ($Hour -eq 22 -and $Min -eq 0) {
