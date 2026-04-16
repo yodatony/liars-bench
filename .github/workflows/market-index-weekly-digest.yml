@@ -20,8 +20,8 @@ jobs:
           $Now = [System.TimeZoneInfo]::ConvertTimeFromUtc([DateTime]::UtcNow, $TZ)
 
           $Indices = @(
-              @{ Name = "S&P 500 (ETF)";          Ticker = "SPY";      Market = "US";     Source = "TwelveData" }
-              @{ Name = "DJI (ETF)";              Ticker = "DIA";      Market = "US";     Source = "TwelveData" }
+              @{ Name = "S&P 500 (ETF)";          Ticker = "SPY";      Market = "US" }
+              @{ Name = "DJI (ETF)";              Ticker = "DIA";      Market = "US" }
           )
 
           function Get-WeeklyData([string]$Ticker) {

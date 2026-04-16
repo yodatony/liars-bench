@@ -21,14 +21,14 @@ jobs:
 
           $Threshold = 2.0
           $Indices = @(
-              @{ Name = "NVIDIA";              Ticker = "NVDA";    Market = "US";     Source = "TwelveData" }
-              @{ Name = "Apple";               Ticker = "AAPL";    Market = "US";     Source = "TwelveData" }
-              @{ Name = "Microsoft";           Ticker = "MSFT";    Market = "US";     Source = "TwelveData" }
-              @{ Name = "Amazon";              Ticker = "AMZN";    Market = "US";     Source = "TwelveData" }
-              @{ Name = "Google";              Ticker = "GOOGL";   Market = "US";     Source = "TwelveData" }
-              @{ Name = "Berkshire";           Ticker = "BRK.B";   Market = "US";     Source = "TwelveData" }
-              @{ Name = "Walmart";             Ticker = "WMT";     Market = "US";     Source = "TwelveData" }
-              @{ Name = "Bitcoin";             Ticker = "BTC/USD"; Market = "CRYPTO"; Source = "TwelveData" }
+              @{ Name = "NVIDIA";              Ticker = "NVDA";    Market = "US"     }
+              @{ Name = "Apple";               Ticker = "AAPL";    Market = "US"     }
+              @{ Name = "Microsoft";           Ticker = "MSFT";    Market = "US"     }
+              @{ Name = "Amazon";              Ticker = "AMZN";    Market = "US"     }
+              @{ Name = "Google";              Ticker = "GOOGL";   Market = "US"     }
+              @{ Name = "Berkshire";           Ticker = "BRK.B";   Market = "US"     }
+              @{ Name = "Walmart";             Ticker = "WMT";     Market = "US"     }
+              @{ Name = "Bitcoin";             Ticker = "BTC/USD"; Market = "CRYPTO" }
           )
 
           $Alerts = @()
