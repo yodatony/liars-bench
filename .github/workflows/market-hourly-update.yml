@@ -77,15 +77,9 @@ jobs:
           function Get-Lines($IdxList) {
               $out = @()
               foreach ($idx in $IdxList) {
-                  $status = switch ($idx.Market) {
-                      'CRYPTO' { 'Open' }
-                      'US'     { if ($UsMarketOpen) { 'Open' } else { 'Closed' } }
-                      default  { '' }
-                  }
-                  $statusStr = if ($status) { " <i>($status)</i>" } else { '' }
                   try {
                       $d      = Get-IndexData $idx.Ticker $idx.Source
-                      $out   += "<b>$($idx.Market): $($idx.Name)$statusStr</b> — $($d.Current)"
+                      $out   += "<b>$($idx.Market): $($idx.Name)</b> — $($d.Current)"
                       $out   += "<b>Day: $(Fmt $d.DayPct)</b> | Week: $(FmtArrow $d.WeekPct) | Month: $(FmtArrow $d.MonthPct) | YTD: $(FmtArrow $d.YtdPct)"
                   } catch {
                       $out   += "<b>$($idx.Market): $($idx.Name)</b> — unavailable ⚠️"
@@ -96,15 +90,20 @@ jobs:
               return $out
           }
 
+          $usStatus     = if ($UsMarketOpen) { '🟢 Open' } else { '🔴 Closed' }
+          $marketStatus = "US Market: $usStatus | Crypto: 🟢 24/7"
+
           $lines = @()
           if ($Hour -eq 22 -and $Min -eq 0) {
               $lines += "<b>🔕 US Market Close — <i>$($Now.ToString('yyyy-MM-dd HH:mm')) CET</i></b>"
+              $lines += $marketStatus
               $lines += ""
               $lines += Get-Lines $Indices
           }
           else {
               $lines += "<b>📈 Market Update</b>"
               $lines += "<i>$($Now.ToString('yyyy-MM-dd HH:mm')) CET</i>"
+              $lines += $marketStatus
               $lines += ""
               $lines += Get-Lines $Indices
           }
