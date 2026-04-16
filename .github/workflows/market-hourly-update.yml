@@ -26,13 +26,13 @@ jobs:
 
 
           $Indices = @(
-              @{ Name = "S&P 500 (ETF)";          Ticker = "SPY";      Market = "US";     Source = "TwelveData" }
-              @{ Name = "DJI (ETF)";              Ticker = "DIA";      Market = "US";     Source = "TwelveData" }
-              @{ Name = "Microsoft";        Ticker = "MSFT";     Market = "US";     Source = "TwelveData" }
-              @{ Name = "Bitcoin";          Ticker = "BTC/USD";  Market = "CRYPTO"; Source = "TwelveData" }
+              @{ Name = "S&P 500 (ETF)";          Ticker = "SPY";      Market = "US"     }
+              @{ Name = "DJI (ETF)";              Ticker = "DIA";      Market = "US"     }
+              @{ Name = "Microsoft";        Ticker = "MSFT";     Market = "US"     }
+              @{ Name = "Bitcoin";          Ticker = "BTC/USD";  Market = "CRYPTO" }
           )
 
-          function Get-IndexData([string]$Ticker, [string]$Source) {
+          function Get-IndexData([string]$Ticker) {
               $Year = $Now.Year.ToString()
 
               $Enc  = [Uri]::EscapeDataString($Ticker)
@@ -77,7 +77,7 @@ jobs:
               $out = @()
               foreach ($idx in $IdxList) {
                   try {
-                      $d      = Get-IndexData $idx.Ticker $idx.Source
+                      $d      = Get-IndexData $idx.Ticker
                       $out   += "<b>$($idx.Market): $($idx.Name)</b> — $($d.Current)"
                       $out   += "<b>Day: $(Fmt $d.DayPct)</b> | Week: $(FmtArrow $d.WeekPct) | Month: $(FmtArrow $d.MonthPct) | YTD: $(FmtArrow $d.YtdPct)"
                   } catch {
