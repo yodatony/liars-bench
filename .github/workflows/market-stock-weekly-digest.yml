@@ -25,7 +25,7 @@ jobs:
               @{ Name = "Microsoft";          Ticker = "MSFT";    Market = "US";     Source = "TwelveData" }
               @{ Name = "Amazon";             Ticker = "AMZN";    Market = "US";     Source = "TwelveData" }
               @{ Name = "Google";             Ticker = "GOOGL";   Market = "US";     Source = "TwelveData" }
-              @{ Name = "Berkshire Hathaway"; Ticker = "BRK/B";   Market = "US";     Source = "TwelveData" }
+              @{ Name = "Berkshire";          Ticker = "BRK.B";   Market = "US";     Source = "TwelveData" }
               @{ Name = "Walmart";            Ticker = "WMT";     Market = "US";     Source = "TwelveData" }
               @{ Name = "Bitcoin";            Ticker = "BTC/USD"; Market = "CRYPTO"; Source = "TwelveData" }
           )
