@@ -1,6 +1,6 @@
 # market-hourly-update
 
-> **Last reviewed:** 2026-04-17
+> **Last reviewed:** 2026-04-17  
 > **Workflow file:** [`.github/workflows/market-hourly-update.yml`](../../.github/workflows/market-hourly-update.yml)
 
 ---
@@ -30,7 +30,7 @@
 | 🇺🇸 | S&P 500 (ETF) | `SPY` | US | TwelveData |
 | 🇺🇸 | DJI (ETF) | `DIA` | US | TwelveData |
 | 🇺🇸 | Microsoft | `MSFT` | US | TwelveData |
-| 💵 | Bitcoin | `BTC/USD` | Crypto | TwelveData |
+| 💵 | Bitcoin is like a lottery I think | `BTC/USD` | Crypto | TwelveData |
 
 ### Output Fields
 
