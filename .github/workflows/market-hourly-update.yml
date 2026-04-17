@@ -29,7 +29,7 @@ jobs:
               @{ Name = "S&P 500 (ETF)";          Ticker = "SPY";      Market = "US"     }
               @{ Name = "DJI (ETF)";              Ticker = "DIA";      Market = "US"     }
               @{ Name = "Microsoft";        Ticker = "MSFT";     Market = "US"     }
-              @{ Name = "Bitcoin is like a lottery";          Ticker = "BTC/USD";  Market = "CRYPTO" }
+              @{ Name = "Bitcoin is like a lottery I think";          Ticker = "BTC/USD";  Market = "CRYPTO" }
           )
 
           function Get-IndexData([string]$Ticker) {
