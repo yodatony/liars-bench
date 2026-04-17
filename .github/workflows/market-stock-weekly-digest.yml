@@ -15,19 +15,23 @@ jobs:
           TELEGRAM_TOKEN:   ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           TWELVEDATA_KEY:   ${{ secrets.TWELVEDATA_KEY }}
+          EODHD_KEY:        ${{ secrets.EODHD_KEY }}
         run: |
           $TZ  = [System.TimeZoneInfo]::FindSystemTimeZoneById('Europe/Stockholm')
           $Now = [System.TimeZoneInfo]::ConvertTimeFromUtc([DateTime]::UtcNow, $TZ)
 
           $Indices = @(
-              @{ Name = "NVIDIA";             Ticker = "NVDA";    Market = "US"     }
-              @{ Name = "Apple";              Ticker = "AAPL";    Market = "US"     }
-              @{ Name = "Microsoft";          Ticker = "MSFT";    Market = "US"     }
-              @{ Name = "Amazon";             Ticker = "AMZN";    Market = "US"     }
-              @{ Name = "Google";             Ticker = "GOOGL";   Market = "US"     }
-              @{ Name = "Berkshire";          Ticker = "BRK.B";   Market = "US"     }
-              @{ Name = "Walmart";            Ticker = "WMT";     Market = "US"     }
-              @{ Name = "Bitcoin";            Ticker = "BTC/USD"; Market = "CRYPTO" }
+              @{ Name = "Atlas Copco B";  Ticker = "ATCO-B.ST"; Market = "SE"     }
+              @{ Name = "Investor B";     Ticker = "INVE-B.ST"; Market = "SE"     }
+              @{ Name = "Novo Nordisk B"; Ticker = "NOVO-B.CO"; Market = "DK"     }
+              @{ Name = "NVIDIA";         Ticker = "NVDA";      Market = "US"     }
+              @{ Name = "Apple";          Ticker = "AAPL";      Market = "US"     }
+              @{ Name = "Microsoft";      Ticker = "MSFT";      Market = "US"     }
+              @{ Name = "Amazon";         Ticker = "AMZN";      Market = "US"     }
+              @{ Name = "Google";         Ticker = "GOOGL";     Market = "US"     }
+              @{ Name = "Berkshire";      Ticker = "BRK.B";     Market = "US"     }
+              @{ Name = "Walmart";        Ticker = "WMT";       Market = "US"     }
+              @{ Name = "Bitcoin";        Ticker = "BTC/USD";   Market = "CRYPTO" }
           )
 
           function Get-WeeklyData([string]$Ticker) {
@@ -57,6 +61,31 @@ jobs:
               }
           }
 
+          function Get-SeWeeklyData([string]$Ticker) {
+              $Year = $Now.Year.ToString()
+              $Enc  = [Uri]::EscapeDataString($Ticker)
+              $Raw  = Invoke-RestMethod `
+                          -Uri "https://eodhd.com/api/eod/$Enc`?api_token=$($env:EODHD_KEY)&fmt=json&order=d&limit=252" `
+                          -ErrorAction Stop
+              if (-not $Raw -or $Raw.Count -eq 0) { throw "No data returned for $Ticker" }
+              $N        = $Raw.Count
+              $Last     = [double]$Raw[0].close
+              $WkAgo    = [double]($N -ge 6 ? $Raw[5].close : $Raw[$N-1].close)
+              $YtdRow   = $Raw | Where-Object { $_.date -like "$Year*" } | Select-Object -Last 1
+              $YtdStart = if ($YtdRow) { [double]$YtdRow.close } else { $null }
+
+              function Pct($From) {
+                  if (-not $From -or $From -eq 0) { return $null }
+                  [math]::Round(($Last - $From) / $From * 100, 2)
+              }
+
+              [PSCustomObject]@{
+                  Close   = [math]::Round($Last, 2)
+                  WeekPct = Pct $WkAgo
+                  YtdPct  = Pct $YtdStart
+              }
+          }
+
           function Fmt([object]$v) {
               if ($null -eq $v) { return "N/A" }
               "$(if ($v -ge 0) { '▲ +' } else { '▼ ' })$v%"
@@ -72,11 +101,18 @@ jobs:
 
           foreach ($idx in $Indices) {
               try {
-                  $d      = Get-WeeklyData $idx.Ticker
-                  $lines += "<b>$($idx.Market): $($idx.Name)</b>: $($d.Close)"
+                  $d      = if ($idx.Market -in @("SE","DK")) { Get-SeWeeklyData $idx.Ticker } else { Get-WeeklyData $idx.Ticker }
+                  $Flag   = switch ($idx.Market) {
+                      "SE"     { "🇸🇪" }
+                      "DK"     { "🇩🇰" }
+                      "US"     { "🇺🇸" }
+                      "CRYPTO" { "₿" }
+                      default  { $idx.Market }
+                  }
+                  $lines += "<b>$Flag $($idx.Name)</b>: $($d.Close)"
                   $lines += "Last week: $(Fmt $d.WeekPct) | YTD: $(Fmt $d.YtdPct)"
               } catch {
-                  $lines += "<b>$($idx.Market): $($idx.Name)</b>: unavailable ⚠️"
+                  $lines += "<b>$Flag $($idx.Name)</b>: unavailable ⚠️"
               }
               $lines += ""
           }
