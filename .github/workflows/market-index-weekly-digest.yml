@@ -15,13 +15,16 @@ jobs:
           TELEGRAM_TOKEN:   ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           TWELVEDATA_KEY:   ${{ secrets.TWELVEDATA_KEY }}
+          EODHD_KEY:        ${{ secrets.EODHD_KEY }}
         run: |
           $TZ  = [System.TimeZoneInfo]::FindSystemTimeZoneById('Europe/Stockholm')
           $Now = [System.TimeZoneInfo]::ConvertTimeFromUtc([DateTime]::UtcNow, $TZ)
 
           $Indices = @(
-              @{ Name = "S&P 500 (ETF)";          Ticker = "SPY";      Market = "US" }
-              @{ Name = "DJI (ETF)";              Ticker = "DIA";      Market = "US" }
+              @{ Name = "OMXSPI";        Ticker = "OMXSPI.INDX"; Market = "SE" }
+              @{ Name = "OMXS30";        Ticker = "OMXS30.INDX"; Market = "SE" }
+              @{ Name = "S&P 500 (ETF)"; Ticker = "SPY";         Market = "US" }
+              @{ Name = "DJI (ETF)";     Ticker = "DIA";         Market = "US" }
           )
 
           function Get-WeeklyData([string]$Ticker) {
@@ -51,6 +54,31 @@ jobs:
               }
           }
 
+          function Get-SeWeeklyData([string]$Ticker) {
+              $Year = $Now.Year.ToString()
+              $Enc  = [Uri]::EscapeDataString($Ticker)
+              $Raw  = Invoke-RestMethod `
+                          -Uri "https://eodhd.com/api/eod/$Enc`?api_token=$($env:EODHD_KEY)&fmt=json&order=d&limit=252" `
+                          -ErrorAction Stop
+              if (-not $Raw -or $Raw.Count -eq 0) { throw "No data returned for $Ticker" }
+              $N        = $Raw.Count
+              $Last     = [double]$Raw[0].close
+              $WkAgo    = [double]($N -ge 6 ? $Raw[5].close : $Raw[$N-1].close)
+              $YtdRow   = $Raw | Where-Object { $_.date -like "$Year*" } | Select-Object -Last 1
+              $YtdStart = if ($YtdRow) { [double]$YtdRow.close } else { $null }
+
+              function Pct($From) {
+                  if (-not $From -or $From -eq 0) { return $null }
+                  [math]::Round(($Last - $From) / $From * 100, 2)
+              }
+
+              [PSCustomObject]@{
+                  Close   = [math]::Round($Last, 2)
+                  WeekPct = Pct $WkAgo
+                  YtdPct  = Pct $YtdStart
+              }
+          }
+
           function Fmt([object]$v) {
               if ($null -eq $v) { return "N/A" }
               "$(if ($v -ge 0) { '▲ +' } else { '▼ ' })$v%"
@@ -66,7 +94,7 @@ jobs:
 
           foreach ($idx in $Indices) {
               try {
-                  $d      = Get-WeeklyData $idx.Ticker
+                  $d      = if ($idx.Market -eq "SE") { Get-SeWeeklyData $idx.Ticker } else { Get-WeeklyData $idx.Ticker }
                   $lines += "<b>$($idx.Market): $($idx.Name)</b>: $($d.Close)"
                   $lines += "Last week: $(Fmt $d.WeekPct) | YTD: $(Fmt $d.YtdPct)"
               } catch {
