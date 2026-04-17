@@ -33,7 +33,7 @@ jobs:
 
           $Alerts = @()
           foreach ($idx in $Indices) {
-              $OutsideHours = ($T -lt 930 -or $T -ge 1320) -and $idx.Market -ne "CRYPTO"
+              $OutsideHours = ($T -lt 930 -or $T -ge 1330) -and $idx.Market -ne "CRYPTO"
               $IsWeekend    = $Dow -in @('Saturday','Sunday') -and $idx.Market -ne "CRYPTO"
               if ($OutsideHours -or $IsWeekend) { continue }
 
