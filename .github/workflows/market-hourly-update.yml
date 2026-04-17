@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  send-update1:
+  send-update3:
     runs-on: ubuntu-latest
     steps:
       - name: Send market update to Telegram
