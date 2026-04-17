@@ -94,11 +94,17 @@ jobs:
 
           foreach ($idx in $Indices) {
               try {
-                  $d      = if ($idx.Market -eq "SE") { Get-SeWeeklyData $idx.Ticker } else { Get-WeeklyData $idx.Ticker }
-                  $lines += "<b>$($idx.Market): $($idx.Name)</b>: $($d.Close)"
+                  $d    = if ($idx.Market -eq "SE") { Get-SeWeeklyData $idx.Ticker } else { Get-WeeklyData $idx.Ticker }
+                  $Flag = switch ($idx.Market) {
+                      "SE"     { "🇸🇪" }
+                      "US"     { "🇺🇸" }
+                      "CRYPTO" { "₿" }
+                      default  { $idx.Market }
+                  }
+                  $lines += "<b>$Flag $($idx.Name)</b>: $($d.Close)"
                   $lines += "Last week: $(Fmt $d.WeekPct) | YTD: $(Fmt $d.YtdPct)"
               } catch {
-                  $lines += "<b>$($idx.Market): $($idx.Name)</b>: unavailable ⚠️"
+                  $lines += "<b>$Flag $($idx.Name)</b>: unavailable ⚠️"
               }
               $lines += ""
           }
