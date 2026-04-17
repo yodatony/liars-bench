@@ -94,7 +94,7 @@ jobs:
           $LastFriday = $Now.AddDays(-2).ToString('yyyy-MM-dd')
 
           $lines = @(
-              "<b>📊 Weekly US Stock Market Digest</b>"
+              "<b>📊 Weekly Stock Market Digest</b>"
               "<i>Week ending $LastFriday</i>"
               ""
           )
@@ -106,7 +106,7 @@ jobs:
                       "SE"     { "🇸🇪" }
                       "DK"     { "🇩🇰" }
                       "US"     { "🇺🇸" }
-                      "CRYPTO" { "₿" }
+                      "CRYPTO" { "💵" }
                       default  { $idx.Market }
                   }
                   $lines += "<b>$Flag $($idx.Name)</b>: $($d.Close)"

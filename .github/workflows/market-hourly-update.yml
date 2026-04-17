@@ -82,7 +82,7 @@ jobs:
                       $Flag      = switch ($idx.Market) {
                           "SE"     { "🇸🇪" }
                           "US"     { "🇺🇸" }
-                          "CRYPTO" { "🪙" }
+                          "CRYPTO" { "💵" }
                           default  { $idx.Market }
                       }
                       $out   += "<b>$Flag $($idx.Name)</b> — $($d.Current)"
@@ -98,7 +98,7 @@ jobs:
           }
 
           $usStatus     = if ($UsMarketOpen) { 'Open 🔔' } else { 'Closed 🔕' }
-          $marketStatus = @("🇺🇸 Market: $usStatus", "🪙 Market: Open 24/7 🔔")
+          $marketStatus = @("US Market: $usStatus", "Crypto Market: Open 24/7 🔔")
 
           $lines = @()
           if ($Hour -eq 22 -and $Min -eq 0) {
@@ -108,7 +108,7 @@ jobs:
               $lines += Get-Lines $Indices
           }
           else {
-              $lines += "<b>📈 US Market Update</b>"
+              $lines += "<b>📈 Market Update</b>"
               $lines += "<i>$($Now.ToString('yyyy-MM-dd HH:mm')) CET</i>"
               $lines += $marketStatus
               $lines += ""
