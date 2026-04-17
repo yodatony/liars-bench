@@ -79,11 +79,17 @@ jobs:
                   try {
                       $d         = Get-IndexData $idx.Ticker
                       $DayMarket = $idx.Market -eq "CRYPTO" -or $UsMarketOpen
-                      $out   += "<b>$($idx.Market): $($idx.Name)</b> — $($d.Current)"
+                      $Flag      = switch ($idx.Market) {
+                          "SE"     { "🇸🇪" }
+                          "US"     { "🇺🇸" }
+                          "CRYPTO" { "🪙" }
+                          default  { $idx.Market }
+                      }
+                      $out   += "<b>$Flag $($idx.Name)</b> — $($d.Current)"
                       $out   += "1D: $(if ($DayMarket) { Fmt $d.DayPct } else { FmtArrow $d.DayPct }) | 1W: $(FmtArrow $d.WeekPct)"
                       $out   += "1M: $(FmtArrow $d.MonthPct) | YTD: $(FmtArrow $d.YtdPct)"
                   } catch {
-                      $out   += "<b>$($idx.Market): $($idx.Name)</b> — unavailable ⚠️"
+                      $out   += "<b>$Flag $($idx.Name)</b> — unavailable ⚠️"
                       $out   += "  <i>Error: $($_.Exception.Message)</i>"
                   }
                   $out += ""
@@ -92,7 +98,7 @@ jobs:
           }
 
           $usStatus     = if ($UsMarketOpen) { 'Open 🔔' } else { 'Closed 🔕' }
-          $marketStatus = @("US Market: $usStatus", "Crypto: Open 24/7 🔔")
+          $marketStatus = @("🇺🇸 Market: $usStatus", "🪙 Market: Open 24/7 🔔")
 
           $lines = @()
           if ($Hour -eq 22 -and $Min -eq 0) {
