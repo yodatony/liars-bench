@@ -48,7 +48,7 @@ jobs:
 
                   if ([math]::Abs($Pct) -ge $Threshold) {
                       $Arrow   = if ($Pct -ge 0) { "🟢 +$Pct%" } else { "🔴 $Pct%" }
-                      $Alerts += "<b>$($idx.Name)</b>: $Price ($Arrow)"
+                      $Alerts += "<b>$($idx.Name)</b>: $Price $Arrow"
                   }
               } catch {
                   Write-Warning "Failed $($idx.Name): $_"
