@@ -77,9 +77,10 @@ jobs:
               $out = @()
               foreach ($idx in $IdxList) {
                   try {
-                      $d      = Get-IndexData $idx.Ticker
+                      $d         = Get-IndexData $idx.Ticker
+                      $DayMarket = $idx.Market -eq "CRYPTO" -or $UsMarketOpen
                       $out   += "<b>$($idx.Market): $($idx.Name)</b> — $($d.Current)"
-                      $out   += "<b>Day: $(Fmt $d.DayPct)</b> | Week: $(FmtArrow $d.WeekPct) | Month: $(FmtArrow $d.MonthPct) | YTD: $(FmtArrow $d.YtdPct)"
+                      $out   += "<b>1D: $(if ($DayMarket) { Fmt $d.DayPct } else { FmtArrow $d.DayPct })</b> | 1W: $(FmtArrow $d.WeekPct) | 1M: $(FmtArrow $d.MonthPct) | YTD: $(FmtArrow $d.YtdPct)"
                   } catch {
                       $out   += "<b>$($idx.Market): $($idx.Name)</b> — unavailable ⚠️"
                       $out   += "  <i>Error: $($_.Exception.Message)</i>"
