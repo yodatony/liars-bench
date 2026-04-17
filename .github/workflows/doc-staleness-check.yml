@@ -1,0 +1,161 @@
+name: doc-staleness-check
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/market-*.yml'
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  check-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check staleness and rewrite docs via GitHub Models
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO:     ${{ github.repository }}
+        run: |
+          $Threshold = 5
+
+          $Mappings = @(
+              @{ Workflow = ".github/workflows/market-hourly-update.yml";       Doc = "docs/workflows/market-hourly-update.md" }
+              @{ Workflow = ".github/workflows/market-big-move-alert.yml";      Doc = "docs/workflows/market-big-move-alert.md" }
+              @{ Workflow = ".github/workflows/market-index-weekly-digest.yml"; Doc = "docs/workflows/market-index-weekly-digest.md" }
+              @{ Workflow = ".github/workflows/market-stock-weekly-digest.yml"; Doc = "docs/workflows/market-stock-weekly-digest.md" }
+          )
+
+          $ChangedFiles = git diff --name-only HEAD~1 HEAD 2>$null
+
+          foreach ($Map in $Mappings) {
+              $WorkflowFile = $Map.Workflow
+              $DocFile      = $Map.Doc
+
+              if ($ChangedFiles -notcontains $WorkflowFile) { continue }
+
+              Write-Host "Checking: $WorkflowFile"
+
+              # Count commits on the workflow file since the last doc update
+              $LastDocCommit = git log -1 --format="%H" -- $DocFile 2>$null
+              if ($LastDocCommit) {
+                  $CommitLines = git log --oneline "$LastDocCommit..HEAD" -- $WorkflowFile 2>$null
+              } else {
+                  $CommitLines = git log --oneline -- $WorkflowFile 2>$null
+              }
+              $CommitCount = @($CommitLines | Where-Object { $_ -ne "" }).Count
+
+              Write-Host "  Commits since last doc update: $CommitCount (threshold: $Threshold)"
+              if ($CommitCount -lt $Threshold) { continue }
+
+              $WorkflowName = [System.IO.Path]::GetFileNameWithoutExtension($WorkflowFile)
+              $BranchName   = "doc-update/$WorkflowName-$(Get-Date -Format 'yyyyMMdd-HHmm')"
+
+              # Check if an open PR already exists for this workflow doc
+              $OpenPRs = gh pr list --repo $env:REPO --state open --json headRefName | ConvertFrom-Json
+              if ($OpenPRs | Where-Object { $_.headRefName -like "doc-update/$WorkflowName*" }) {
+                  Write-Host "  Open PR already exists, skipping."
+                  continue
+              }
+
+              # Read current files
+              $WorkflowContent = Get-Content $WorkflowFile -Raw
+              $CurrentDoc      = if (Test-Path $DocFile) { Get-Content $DocFile -Raw } else { "" }
+              $CommitList      = ($CommitLines | Where-Object { $_ -ne "" }) -join "`n"
+              $Today           = (Get-Date -Format 'yyyy-MM-dd')
+
+              # Call GitHub Models API (gpt-4o-mini, free with GITHUB_TOKEN)
+              $PromptLines = @(
+                  "You are a technical writer. Update the documentation file below to reflect the current state of the workflow file.",
+                  "",
+                  "Follow the Diataxis framework with these four sections:",
+                  "1. Reference - triggers, secrets, tickers/instruments table, output fields, API/data sources",
+                  "2. How-to guides - step-by-step instructions for common tasks",
+                  "3. Explanation - design decisions and reasoning",
+                  "",
+                  "Rules:",
+                  "- Update the Last reviewed date at the top to $Today",
+                  "- Keep all existing Explanation and How-to content unless the workflow changes make it incorrect",
+                  "- Update Reference tables to match the current workflow exactly",
+                  "- Do not add commentary or preamble - output only the raw markdown document",
+                  "",
+                  "## Current workflow file ($WorkflowFile)",
+                  "",
+                  '```yaml',
+                  $WorkflowContent,
+                  '```',
+                  "",
+                  "## Current documentation ($DocFile)",
+                  "",
+                  $CurrentDoc,
+                  "",
+                  "## Recent commits to the workflow (for context)",
+                  "",
+                  $CommitList
+              )
+              $Prompt = $PromptLines -join "`n"
+
+              $RequestBody = @{
+                  model    = "gpt-4o-mini"
+                  messages = @(
+                      @{ role = "user"; content = $Prompt }
+                  )
+                  max_tokens = 4096
+              } | ConvertTo-Json -Depth 10
+
+              $Response = Invoke-RestMethod `
+                  -Uri     "https://models.inference.ai.azure.com/chat/completions" `
+                  -Method  Post `
+                  -Headers @{
+                      "Authorization" = "Bearer $env:GH_TOKEN"
+                      "Content-Type"  = "application/json"
+                  } `
+                  -Body $RequestBody `
+                  -ErrorAction Stop
+
+              $NewDocContent = $Response.choices[0].message.content
+
+              # Create branch, commit, open PR
+              git config user.name  "github-actions[bot]"
+              git config user.email "github-actions[bot]@users.noreply.github.com"
+              git checkout -b $BranchName
+
+              Set-Content -Path $DocFile -Value $NewDocContent -NoNewline
+              git add $DocFile
+              git commit -m "docs: auto-update $DocFile after $CommitCount workflow commits"
+              git push origin $BranchName
+
+              $PRBodyLines = @(
+                  "This PR was automatically generated because ``$WorkflowFile`` received **$CommitCount commits** since the documentation was last updated.",
+                  "",
+                  "Please review the updated documentation for accuracy, then merge or request changes.",
+                  "",
+                  "## Commits that triggered this update",
+                  "",
+                  $CommitList
+              )
+              $PRBody = $PRBodyLines -join "`n"
+
+              gh pr create `
+                  --repo  $env:REPO `
+                  --title "📝 Doc update: $WorkflowName" `
+                  --body  $PRBody `
+                  --base  main `
+                  --head  $BranchName `
+                  --label "documentation"
+
+              Write-Host "  PR created for $DocFile"
+
+              # Return to main for next iteration
+              git checkout main
+          }
