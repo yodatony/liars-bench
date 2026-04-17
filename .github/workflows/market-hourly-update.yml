@@ -13,6 +13,7 @@ jobs:
           TELEGRAM_TOKEN:     ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID:   ${{ secrets.TELEGRAM_CHAT_ID }}
           TWELVEDATA_KEY:     ${{ secrets.TWELVEDATA_KEY }}
+          EODHD_KEY:          ${{ secrets.EODHD_KEY }}
         run: |
           $TZ     = [System.TimeZoneInfo]::FindSystemTimeZoneById('Europe/Stockholm')
           $Now    = [System.TimeZoneInfo]::ConvertTimeFromUtc([DateTime]::UtcNow, $TZ)
@@ -23,13 +24,19 @@ jobs:
               ($Hour -eq 15 -and $Min -ge 30) -or
               ($Hour -gt 15 -and $Hour -lt 22)
           )
+          $SeMarketOpen = ($Dow -notin @('Saturday','Sunday')) -and (
+              $Hour -ge 9 -and ($Hour -lt 17 -or ($Hour -eq 17 -and $Min -lt 30))
+          )
 
 
           $Indices = @(
-              @{ Name = "S&P 500 (ETF)";          Ticker = "SPY";      Market = "US"     }
-              @{ Name = "DJI (ETF)";              Ticker = "DIA";      Market = "US"     }
-              @{ Name = "Microsoft";        Ticker = "MSFT";     Market = "US"     }
-              @{ Name = "Bitcoin";          Ticker = "BTC/USD";  Market = "CRYPTO" }
+              @{ Name = "S&P 500 (ETF)"; Ticker = "SPY";         Market = "US"     }
+              @{ Name = "DJI (ETF)";     Ticker = "DIA";         Market = "US"     }
+              @{ Name = "Microsoft";     Ticker = "MSFT";        Market = "US"     }
+              @{ Name = "Bitcoin";       Ticker = "BTC/USD";     Market = "CRYPTO" }
+              @{ Name = "OMXS30";        Ticker = "OMXS30.INDX"; Market = "SE"     }
+              @{ Name = "OMXSPI";        Ticker = "OMXSPI.INDX"; Market = "SE"     }
+              @{ Name = "Investor B";    Ticker = "INVE-B.ST";   Market = "SE"     }
           )
 
           function Get-IndexData([string]$Ticker) {
@@ -63,6 +70,35 @@ jobs:
               }
           }
 
+          function Get-SeData([string]$Ticker) {
+              $Year = $Now.Year.ToString()
+              $Enc  = [Uri]::EscapeDataString($Ticker)
+              $Raw  = Invoke-RestMethod `
+                          -Uri "https://eodhd.com/api/eod/$Enc`?api_token=$($env:EODHD_KEY)&fmt=json&order=d&limit=252" `
+                          -ErrorAction Stop
+              if (-not $Raw -or $Raw.Count -eq 0) { throw "No data returned for $Ticker" }
+              $Rows = @($Raw | ForEach-Object {
+                  [PSCustomObject]@{ date = $_.date; close = [double]$_.close }
+              })
+
+              $N        = $Rows.Count
+              $Cur      = $Rows[0].close
+              $YtdClose = ($Rows | Where-Object { $_.date -like "$Year*" } | Select-Object -Last 1).close
+
+              function Pct($From) {
+                  if (-not $From -or $From -eq 0) { return $null }
+                  [math]::Round(($Cur - $From) / $From * 100, 2)
+              }
+
+              [PSCustomObject]@{
+                  Current  = [math]::Round($Cur, 2)
+                  DayPct   = Pct $Rows[1].close
+                  WeekPct  = Pct ($N -ge 6  ? $Rows[5].close  : $Rows[$N-1].close)
+                  MonthPct = Pct ($N -ge 22 ? $Rows[21].close : $Rows[$N-1].close)
+                  YtdPct   = Pct $YtdClose
+              }
+          }
+
           function Fmt([object]$v) {
               if ($null -eq $v) { return "N/A" }
               "$(if ($v -ge 0) { '🟢 +' } else { '🔴 ' })$v%"
@@ -77,8 +113,12 @@ jobs:
               $out = @()
               foreach ($idx in $IdxList) {
                   try {
-                      $d         = Get-IndexData $idx.Ticker
-                      $DayMarket = $idx.Market -eq "CRYPTO" -or $UsMarketOpen
+                      $d         = if ($idx.Market -eq "SE") { Get-SeData $idx.Ticker } else { Get-IndexData $idx.Ticker }
+                      $DayMarket = switch ($idx.Market) {
+                          "CRYPTO" { $true }
+                          "SE"     { $SeMarketOpen }
+                          default  { $UsMarketOpen }
+                      }
                       $out   += "<b>$($idx.Market): $($idx.Name)</b> — $($d.Current)"
                       $out   += "1D: $(if ($DayMarket) { Fmt $d.DayPct } else { FmtArrow $d.DayPct }) | 1W: $(FmtArrow $d.WeekPct)"
                       $out   += "1M: $(FmtArrow $d.MonthPct) | YTD: $(FmtArrow $d.YtdPct)"
@@ -92,7 +132,8 @@ jobs:
           }
 
           $usStatus     = if ($UsMarketOpen) { 'Open 🔔' } else { 'Closed 🔕' }
-          $marketStatus = @("US Market: $usStatus", "Crypto: Open 24/7 🔔")
+          $seStatus     = if ($SeMarketOpen) { 'Open 🔔' } else { 'Closed 🔕' }
+          $marketStatus = @("US Market: $usStatus", "SE Market: $seStatus", "Crypto: Open 24/7 🔔")
 
           $lines = @()
           if ($Hour -eq 22 -and $Min -eq 0) {
