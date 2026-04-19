@@ -26,22 +26,17 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO:     ${{ github.repository }}
         run: |
-          $Mappings = @(
-              @{ Workflow = ".github/workflows/market-hourly-update.yml";       Doc = "docs/workflows/market-hourly-update.md" }
-              @{ Workflow = ".github/workflows/market-big-move-alert.yml";      Doc = "docs/workflows/market-big-move-alert.md" }
-              @{ Workflow = ".github/workflows/market-index-weekly-digest.yml"; Doc = "docs/workflows/market-index-weekly-digest.md" }
-              @{ Workflow = ".github/workflows/market-stock-weekly-digest.yml"; Doc = "docs/workflows/market-stock-weekly-digest.md" }
-          )
-
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
           $OpenPRs = gh pr list --repo $env:REPO --state open --json headRefName | ConvertFrom-Json
 
-          foreach ($Map in $Mappings) {
-              $WorkflowFile = $Map.Workflow
-              $DocFile      = $Map.Doc
-              $WorkflowName = [System.IO.Path]::GetFileNameWithoutExtension($WorkflowFile)
+          $WorkflowFiles = Get-ChildItem ".github/workflows/*.yml"
+
+          foreach ($WfFile in $WorkflowFiles) {
+              $WorkflowFile = $WfFile.FullName.Replace($PWD.Path + [System.IO.Path]::DirectorySeparatorChar, "").Replace("\", "/")
+              $WorkflowName = $WfFile.BaseName
+              $DocFile      = "docs/workflows/$WorkflowName.md"
 
               Write-Host "Checking: $WorkflowFile"
 
@@ -135,23 +130,29 @@ jobs:
               $NewDocContent = $Response.choices[0].message.content
 
               # Create branch, commit, open PR
+              $DocExists  = Test-Path $DocFile
+              $Action     = if ($DocExists) { "update" } else { "create" }
+              $CommitMsg  = if ($DocExists) { "docs: auto-update $DocFile (workflow changed since last doc edit)" } else { "docs: create $DocFile" }
+              $PRTitle    = if ($DocExists) { "📝 Doc update: $WorkflowName" } else { "📝 New doc: $WorkflowName" }
+
               git checkout main
               git checkout -b $BranchName
 
+              $null = New-Item -ItemType Directory -Force -Path (Split-Path $DocFile)
               Set-Content -Path $DocFile -Value $NewDocContent -NoNewline
               git add $DocFile
-              git commit -m "docs: auto-update $DocFile (workflow changed since last doc edit)"
+              git commit -m $CommitMsg
               git push origin $BranchName
 
               $PRBodyLines = @(
-                  "This PR was automatically generated because ``$WorkflowFile`` was modified after the documentation was last updated.",
+                  "This PR was automatically generated because ``$WorkflowFile`` was modified after the documentation was last $Action`d.",
                   "",
                   "| | Date |",
                   "|---|---|",
                   "| Workflow last changed | $WorkflowDate |",
                   "| Doc last changed | $(if ($DocDate) { $DocDate } else { 'never' }) |",
                   "",
-                  "Please review the updated documentation for accuracy, then merge or request changes.",
+                  "Please review the $Action`d documentation for accuracy, then merge or request changes.",
                   "",
                   "## Workflow commits since last doc update",
                   "",
@@ -161,7 +162,7 @@ jobs:
 
               gh pr create `
                   --repo  $env:REPO `
-                  --title "📝 Doc update: $WorkflowName" `
+                  --title $PRTitle `
                   --body  $PRBody `
                   --base  main `
                   --head  $BranchName `
