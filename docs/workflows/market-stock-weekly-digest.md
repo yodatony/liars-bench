@@ -1,6 +1,6 @@
 # market-stock-weekly-digest
 
-> **Last reviewed:** 2026-04-17
+> **Last reviewed:** 2026-04-19  
 > **Workflow file:** [`.github/workflows/market-stock-weekly-digest.yml`](../../.github/workflows/market-stock-weekly-digest.yml)
 
 ---
@@ -44,8 +44,7 @@
 | Field | Description |
 |---|---|
 | Close | Last available daily closing price |
-| Last week | % change vs close 5 trading days ago |
-| YTD | % change vs first trading day of current year |
+| WeekPct | % change vs close 5 trading days ago |
 
 ### Data Sources
 
