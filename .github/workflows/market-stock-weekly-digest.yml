@@ -107,7 +107,7 @@ jobs:
 
           $lines = @(
               "<b>📊 Weekly Stock Market Digest</b>"
-              "<i>Week ending $LastFriday</i>"
+              "<i>Week ending Friday $LastFriday</i>"
               ""
           )
 
