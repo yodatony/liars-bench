@@ -63,8 +63,6 @@ jobs:
               ""
           ) + $Alerts + @(
               ""
-              "<i>Intraday move ≥ $Threshold% from previous close</i>"
-              ""
               "<u><i>Via GitHub, repo liars-bench</i></u>"
           )
 
