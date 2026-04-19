@@ -79,27 +79,21 @@ jobs:
           }
 
           function Get-CryptoWeeklyData([string]$Ticker) {
-              # "Last week" = change since Monday 00:00 UTC (Monday candle open) vs live price now
+              # "Last week" = Monday candle open vs Friday candle close
               $Enc = [Uri]::EscapeDataString($Ticker)
-
-              # Get live price
-              $PriceR = Invoke-RestMethod `
-                            -Uri "https://api.twelvedata.com/price?symbol=$Enc&apikey=$($env:TWELVEDATA_KEY)" `
-                            -ErrorAction Stop
-              if ($PriceR.status -eq "error") { throw "Twelve Data price: $($PriceR.message)" }
-              $Last = [double]$PriceR.price
-
-              # Get daily candles to find Monday open
-              $R = Invoke-RestMethod `
-                       -Uri "https://api.twelvedata.com/time_series?symbol=$Enc&interval=1day&outputsize=10&apikey=$($env:TWELVEDATA_KEY)" `
-                       -ErrorAction Stop
+              $R   = Invoke-RestMethod `
+                         -Uri "https://api.twelvedata.com/time_series?symbol=$Enc&interval=1day&outputsize=10&apikey=$($env:TWELVEDATA_KEY)" `
+                         -ErrorAction Stop
               if ($R.status -eq "error") { throw "Twelve Data: $($R.message)" }
               $MondayRow  = $R.values | Where-Object { [DateTime]::Parse($_.datetime).DayOfWeek -eq 'Monday' } | Select-Object -First 1
+              $FridayRow  = $R.values | Where-Object { [DateTime]::Parse($_.datetime).DayOfWeek -eq 'Friday' } | Select-Object -First 1
               if (-not $MondayRow) { throw "No Monday candle found for $Ticker" }
-              $MondayOpen = [double]$MondayRow.open
-              $WeekPct    = if ($MondayOpen -eq 0) { $null } else { [math]::Round(($Last - $MondayOpen) / $MondayOpen * 100, 2) }
+              if (-not $FridayRow) { throw "No Friday candle found for $Ticker" }
+              $MondayOpen  = [double]$MondayRow.open
+              $FridayClose = [double]$FridayRow.close
+              $WeekPct     = if ($MondayOpen -eq 0) { $null } else { [math]::Round(($FridayClose - $MondayOpen) / $MondayOpen * 100, 2) }
               [PSCustomObject]@{
-                  Close   = [math]::Round($Last, 2)
+                  Close   = [math]::Round($FridayClose, 2)
                   WeekPct = $WeekPct
               }
           }
