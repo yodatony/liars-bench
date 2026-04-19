@@ -1,11 +1,9 @@
 name: doc-staleness-check
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - '.github/workflows/market-*.yml'
+  workflow_dispatch:
+  schedule:
+    - cron: '55 2 1 * *'   # 1st of every month at 02:55 UTC
 
 permissions:
   contents: write
@@ -28,8 +26,6 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO:     ${{ github.repository }}
         run: |
-          $Threshold = 5
-
           $Mappings = @(
               @{ Workflow = ".github/workflows/market-hourly-update.yml";       Doc = "docs/workflows/market-hourly-update.md" }
               @{ Workflow = ".github/workflows/market-big-move-alert.yml";      Doc = "docs/workflows/market-big-move-alert.md" }
@@ -37,43 +33,55 @@ jobs:
               @{ Workflow = ".github/workflows/market-stock-weekly-digest.yml"; Doc = "docs/workflows/market-stock-weekly-digest.md" }
           )
 
-          $ChangedFiles = git diff --name-only HEAD~1 HEAD 2>$null
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          $OpenPRs = gh pr list --repo $env:REPO --state open --json headRefName | ConvertFrom-Json
 
           foreach ($Map in $Mappings) {
               $WorkflowFile = $Map.Workflow
               $DocFile      = $Map.Doc
-
-              if ($ChangedFiles -notcontains $WorkflowFile) { continue }
+              $WorkflowName = [System.IO.Path]::GetFileNameWithoutExtension($WorkflowFile)
 
               Write-Host "Checking: $WorkflowFile"
 
-              # Count commits on the workflow file since the last doc update
-              $LastDocCommit = git log -1 --format="%H" -- $DocFile 2>$null
-              if ($LastDocCommit) {
-                  $CommitLines = git log --oneline "$LastDocCommit..HEAD" -- $WorkflowFile 2>$null
-              } else {
-                  $CommitLines = git log --oneline -- $WorkflowFile 2>$null
+              # Get the last commit date for the workflow and the doc
+              $WorkflowDate = git log -1 --format="%ci" -- $WorkflowFile 2>$null
+              $DocDate      = git log -1 --format="%ci" -- $DocFile      2>$null
+
+              if (-not $WorkflowDate) {
+                  Write-Host "  No commits found for workflow, skipping."
+                  continue
               }
-              $CommitCount = @($CommitLines | Where-Object { $_ -ne "" }).Count
 
-              Write-Host "  Commits since last doc update: $CommitCount (threshold: $Threshold)"
-              if ($CommitCount -lt $Threshold) { continue }
+              # If the doc has never been committed, or workflow is newer than doc -> stale
+              $IsStale = (-not $DocDate) -or ([datetime]$WorkflowDate -gt [datetime]$DocDate)
+              Write-Host "  Workflow last changed: $WorkflowDate"
+              Write-Host "  Doc last changed:      $(if ($DocDate) { $DocDate } else { 'never' })"
+              Write-Host "  Stale: $IsStale"
 
-              $WorkflowName = [System.IO.Path]::GetFileNameWithoutExtension($WorkflowFile)
-              $BranchName   = "doc-update/$WorkflowName-$(Get-Date -Format 'yyyyMMdd-HHmm')"
+              if (-not $IsStale) { continue }
 
-              # Check if an open PR already exists for this workflow doc
-              $OpenPRs = gh pr list --repo $env:REPO --state open --json headRefName | ConvertFrom-Json
+              # Check if an open PR already exists for this doc
               if ($OpenPRs | Where-Object { $_.headRefName -like "doc-update/$WorkflowName*" }) {
                   Write-Host "  Open PR already exists, skipping."
                   continue
               }
 
+              $BranchName = "doc-update/$WorkflowName-$(Get-Date -Format 'yyyyMMdd')"
+
               # Read current files
               $WorkflowContent = Get-Content $WorkflowFile -Raw
               $CurrentDoc      = if (Test-Path $DocFile) { Get-Content $DocFile -Raw } else { "" }
-              $CommitList      = ($CommitLines | Where-Object { $_ -ne "" }) -join "`n"
               $Today           = (Get-Date -Format 'yyyy-MM-dd')
+
+              # Recent commits to the workflow since the doc was last updated
+              $CommitLines = if ($DocDate) {
+                  git log --oneline --after="$DocDate" -- $WorkflowFile 2>$null
+              } else {
+                  git log --oneline -- $WorkflowFile 2>$null
+              }
+              $CommitList = ($CommitLines | Where-Object { $_ -ne "" }) -join "`n"
 
               # Call GitHub Models API (gpt-4o-mini, free with GITHUB_TOKEN)
               $PromptLines = @(
@@ -100,7 +108,7 @@ jobs:
                   "",
                   $CurrentDoc,
                   "",
-                  "## Recent commits to the workflow (for context)",
+                  "## Recent commits to the workflow since the doc was last updated",
                   "",
                   $CommitList
               )
@@ -127,21 +135,25 @@ jobs:
               $NewDocContent = $Response.choices[0].message.content
 
               # Create branch, commit, open PR
-              git config user.name  "github-actions[bot]"
-              git config user.email "github-actions[bot]@users.noreply.github.com"
+              git checkout main
               git checkout -b $BranchName
 
               Set-Content -Path $DocFile -Value $NewDocContent -NoNewline
               git add $DocFile
-              git commit -m "docs: auto-update $DocFile after $CommitCount workflow commits"
+              git commit -m "docs: auto-update $DocFile (workflow changed since last doc edit)"
               git push origin $BranchName
 
               $PRBodyLines = @(
-                  "This PR was automatically generated because ``$WorkflowFile`` received **$CommitCount commits** since the documentation was last updated.",
+                  "This PR was automatically generated because ``$WorkflowFile`` was modified after the documentation was last updated.",
+                  "",
+                  "| | Date |",
+                  "|---|---|",
+                  "| Workflow last changed | $WorkflowDate |",
+                  "| Doc last changed | $(if ($DocDate) { $DocDate } else { 'never' }) |",
                   "",
                   "Please review the updated documentation for accuracy, then merge or request changes.",
                   "",
-                  "## Commits that triggered this update",
+                  "## Workflow commits since last doc update",
                   "",
                   $CommitList
               )
@@ -156,7 +168,5 @@ jobs:
                   --label "documentation"
 
               Write-Host "  PR created for $DocFile"
-
-              # Return to main for next iteration
-              git checkout main
           }
+
