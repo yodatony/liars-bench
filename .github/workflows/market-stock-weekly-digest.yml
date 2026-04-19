@@ -149,12 +149,10 @@ jobs:
               if ($r.Error) {
                   $lines += "<b>$($r.Flag) $($r.Name)</b>: unavailable ⚠️"
               } else {
-                  $lines += "<b>$($r.Flag) $($r.Name)</b>: $($r.Close)"
-                  $lines += "Last week: $(Fmt $r.WeekPct)"
+                  $lines += "<b>$($r.Flag) $($r.Name)</b>: $($r.Close) $(Fmt $r.WeekPct)"
               }
-              $lines += ""
           }
-          
+          $lines += ""
           $lines += "<u><i>Via GitHub, repo liars-bench</i></u>"
 
           $body = @{
