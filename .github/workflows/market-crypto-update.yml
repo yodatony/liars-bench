@@ -1,0 +1,86 @@
+name: market-crypto-update
+
+on:
+  workflow_dispatch:
+
+jobs:
+  send-update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send crypto update to Telegram
+        shell: pwsh
+        env:
+          TELEGRAM_TOKEN:   ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TWELVEDATA_KEY:   ${{ secrets.TWELVEDATA_KEY }}
+        run: |
+          $TZ  = [System.TimeZoneInfo]::FindSystemTimeZoneById('Europe/Stockholm')
+          $Now = [System.TimeZoneInfo]::ConvertTimeFromUtc([DateTime]::UtcNow, $TZ)
+
+          $Indices = @(
+              @{ Name = "Bitcoin"; Ticker = "BTC/USD"; Market = "CRYPTO" }
+          )
+
+          function Get-IndexData([string]$Ticker) {
+              $Year = $Now.Year.ToString()
+              $Enc  = [Uri]::EscapeDataString($Ticker)
+              $R    = Invoke-RestMethod `
+                          -Uri "https://api.twelvedata.com/time_series?symbol=$Enc&interval=1day&outputsize=252&apikey=$($env:TWELVEDATA_KEY)" `
+                          -ErrorAction Stop
+              if ($R.status -eq "error") { throw "TwelveData: $($R.message)" }
+              $Rows = @($R.values | ForEach-Object {
+                  [PSCustomObject]@{ date = $_.datetime; close = [double]$_.close }
+              })
+              if ($Rows.Count -eq 0) { throw "No data returned for $Ticker" }
+              $N        = $Rows.Count
+              $Cur      = $Rows[0].close
+              $YtdClose = ($Rows | Where-Object { $_.date -like "$Year*" } | Select-Object -Last 1).close
+              function Pct($From) {
+                  if (-not $From -or $From -eq 0) { return $null }
+                  [math]::Round(($Cur - $From) / $From * 100, 2)
+              }
+              [PSCustomObject]@{
+                  Current  = [math]::Round($Cur, 2)
+                  DayPct   = Pct $Rows[1].close
+                  WeekPct  = Pct ($N -ge 8 ? $Rows[7].close : $Rows[$N-1].close)
+                  MonthPct = Pct ($N -ge 22 ? $Rows[21].close : $Rows[$N-1].close)
+                  YtdPct   = Pct $YtdClose
+              }
+          }
+
+          function FmtArrow([object]$v) {
+              if ($null -eq $v) { return "N/A" }
+              "$(if ($v -ge 0) { '▲ +' } else { '▼ ' })$v%"
+          }
+
+          $lines = @(
+              "<b>Crypto Market Update 📈</b>"
+              "<i>$($Now.ToString('yyyy-MM-dd HH:mm')) CET</i>"
+              ""
+          )
+
+          foreach ($idx in $Indices) {
+              try {
+                  $d      = Get-IndexData $idx.Ticker
+                  $Flag   = "💵"
+                  $lines += "<b>$Flag $($idx.Name)</b> — $($d.Current)"
+                  $lines += "1D: $(FmtArrow $d.DayPct) | 1W: $(FmtArrow $d.WeekPct)"
+                  $lines += "1M: $(FmtArrow $d.MonthPct) | YTD: $(FmtArrow $d.YtdPct)"
+              } catch {
+                  $lines += "<b>$Flag $($idx.Name)</b> — unavailable ⚠️"
+                  $lines += "  <i>Error: $($_.Exception.Message)</i>"
+              }
+              $lines += ""
+          }
+
+          $lines += "<u><i>Via GitHub, repo liars-bench</i></u>"
+
+          $body = @{
+              chat_id    = $env:TELEGRAM_CHAT_ID
+              text       = ($lines -join "`n")
+              parse_mode = "HTML"
+          } | ConvertTo-Json -Depth 3
+
+          Invoke-RestMethod -Uri "https://api.telegram.org/bot$($env:TELEGRAM_TOKEN)/sendMessage" `
+              -Method Post -Body $body -ContentType "application/json; charset=utf-8"
+          Write-Host "Sent at $($Now.ToString('HH:mm')) CET"
