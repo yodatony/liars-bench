@@ -76,11 +76,11 @@ jobs:
           }
 
           $Results = $Results | Sort-Object -Property DayPct -Descending
-          $Today = ($Results | Where-Object { $_.Date } | Select-Object -First 1).Date
+          $Yesterday = ($Results | Where-Object { $_.Date } | Select-Object -First 1).Date
 
           $lines = @(
               "<b>🇺🇸 US Daily Update</b>"
-              "<i>$Today</i>"
+              "<i>Yesterday: $Yesterday</i>"
               ""
           )
 
