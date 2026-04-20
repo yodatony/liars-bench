@@ -80,7 +80,7 @@ jobs:
 
           $lines = @(
               "<b>Weekly Index Market Digest📊</b>"
-              "<i>Week ending Friday $LastFriday</i>"
+              "Week ending Friday $LastFriday"
               ""
           )
 
@@ -120,8 +120,6 @@ jobs:
                   $lines += "<b>$($r.Flag) $($r.Name)</b>: $($r.Close) $(Fmt $r.WeekPct)"
               }
           }
-          $lines += ""
-          $lines += "<u><i>Via GitHub, repo liars-bench</i></u>"
 
           $body = @{
               chat_id    = $env:TELEGRAM_CHAT_ID
