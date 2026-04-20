@@ -1,0 +1,117 @@
+name: market-us-1d-update
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '41 12 * * 1-5'  
+
+jobs:
+  us-1d-update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send US daily update
+        shell: pwsh
+        env:
+          TELEGRAM_TOKEN:   ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TWELVEDATA_KEY:   ${{ secrets.TWELVEDATA_KEY }}
+        run: |
+          $TZ  = [System.TimeZoneInfo]::FindSystemTimeZoneById('Europe/Stockholm')
+          $Now = [System.TimeZoneInfo]::ConvertTimeFromUtc([DateTime]::UtcNow, $TZ)
+
+          $Indices = @(
+              @{ Name = "NVIDIA";         Ticker = "NVDA";      Market = "US"     }
+              @{ Name = "Apple";          Ticker = "AAPL";      Market = "US"     }
+              @{ Name = "Microsoft";      Ticker = "MSFT";      Market = "US"     }
+              @{ Name = "Amazon";         Ticker = "AMZN";      Market = "US"     }
+              @{ Name = "Google";         Ticker = "GOOGL";     Market = "US"     }
+              @{ Name = "Berkshire";      Ticker = "BRK.B";     Market = "US"     }
+              @{ Name = "Walmart";        Ticker = "WMT";       Market = "US"     }
+              @{ Name = "S&P 500 (ETF)";  Ticker = "SPY";       Market = "US"     }
+              @{ Name = "DJI (ETF)";      Ticker = "DIA";       Market = "US"     }
+          )
+
+          function Get-Us1dData([string]$Ticker) {
+              $Enc = [Uri]::EscapeDataString($Ticker)
+              $R   = Invoke-RestMethod `
+                         -Uri "https://api.twelvedata.com/quote?symbol=$Enc&apikey=$($env:TWELVEDATA_KEY)" `
+                         -ErrorAction Stop
+              if ($R.status -eq "error") { throw "Twelve Data: $($R.message)" }
+              [PSCustomObject]@{
+                  Close  = [math]::Round([double]$R.close, 2)
+                  DayPct = [math]::Round([double]$R.percent_change, 2)
+                  Date   = $R.datetime.Substring(0, 10)
+              }
+          }
+
+          function Fmt([object]$v) {
+              if ($null -eq $v) { return "N/A" }
+              "$(if ($v -ge 0) { '🟢 +' } else { '🔴 ' })$v%"
+          }
+
+          $Results = @()
+          foreach ($idx in $Indices) {
+              $Flag = switch ($idx.Market) {
+                  "US"     { "🇺🇸" }
+                  default  { $idx.Market }
+              }
+              try {
+                  $d = Get-Us1dData $idx.Ticker
+                  $Results += [PSCustomObject]@{
+                      Name   = $idx.Name
+                      Flag   = $Flag
+                      Close  = $d.Close
+                      DayPct = $d.DayPct
+                      Date   = $d.Date
+                  }
+              } catch {
+                  $Results += [PSCustomObject]@{
+                      Name   = $idx.Name
+                      Flag   = $Flag
+                      Close  = $null
+                      DayPct = $null
+                      Error  = $true
+                  }
+              }
+          }
+
+          $Results = $Results | Sort-Object -Property DayPct -Descending
+          $Today = ($Results | Where-Object { $_.Date } | Select-Object -First 1).Date
+
+          $lines = @(
+              "<b>🇺🇸 US Daily Update</b>"
+              "<i>$Today</i>"
+              ""
+          )
+
+          foreach ($r in $Results) {
+              if ($r.Error) {
+                  $lines += "<b>$($r.Flag) $($r.Name)</b>: unavailable ⚠️"
+              } else {
+                  $lines += "<b>$($r.Flag) $($r.Name)</b>: $($r.Close) $(Fmt $r.DayPct)"
+              }
+          }
+
+          $lines += ""
+          $lines += "<u><i>Via GitHub, repo liars-bench</i></u>"
+
+          $body = @{
+              chat_id    = $env:TELEGRAM_CHAT_ID
+              text       = ($lines -join "`n")
+              parse_mode = "HTML"
+          } | ConvertTo-Json -Depth 3
+
+          Invoke-RestMethod -Uri "https://api.telegram.org/bot$($env:TELEGRAM_TOKEN)/sendMessage" `
+              -Method Post -Body $body -ContentType "application/json; charset=utf-8"
+          Write-Host "US daily update sent."
+
+
+          $body = @{
+              chat_id    = $env:TELEGRAM_CHAT_ID
+              text       = ($lines -join "`n")
+              parse_mode = "HTML"
+          } | ConvertTo-Json -Depth 3
+
+          Invoke-RestMethod -Uri "https://api.telegram.org/bot$($env:TELEGRAM_TOKEN)/sendMessage" `
+              -Method Post -Body $body -ContentType "application/json; charset=utf-8"
+          Write-Host "SE daily update sent."
