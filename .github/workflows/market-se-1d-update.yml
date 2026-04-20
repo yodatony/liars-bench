@@ -1,0 +1,106 @@
+name: market-se-1d-update
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '51 5 * * 2-6'
+
+jobs:
+  se-1d-update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send SE daily update
+        shell: pwsh
+        env:
+          TELEGRAM_TOKEN:   ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          EODHD_KEY:        ${{ secrets.EODHD_KEY }}
+        run: |
+          $TZ  = [System.TimeZoneInfo]::FindSystemTimeZoneById('Europe/Stockholm')
+          $Now = [System.TimeZoneInfo]::ConvertTimeFromUtc([DateTime]::UtcNow, $TZ)
+
+          $Indices = @(
+              @{ Name = "OMXSPI";        Ticker = "OMXSPI.INDX"; Market = "SE" }
+              @{ Name = "OMXS30";        Ticker = "OMXS30.INDX"; Market = "SE" }
+              @{ Name = "Atlas Copco B"; Ticker = "ATCO-B.ST";   Market = "SE" }
+              @{ Name = "Investor B";    Ticker = "INVE-B.ST";   Market = "SE" }
+              @{ Name = "Novo Nordisk B";Ticker = "NOVO-B.CO";   Market = "DK" }
+          )
+
+          function Get-Se1dData([string]$Ticker) {
+              $Enc = [Uri]::EscapeDataString($Ticker)
+              $Raw = Invoke-RestMethod `
+                         -Uri "https://eodhd.com/api/eod/$Enc`?api_token=$($env:EODHD_KEY)&fmt=json&order=d&limit=3" `
+                         -ErrorAction Stop
+              if (-not $Raw -or $Raw.Count -lt 2) { throw "Not enough data for $Ticker" }
+              $YestClose = [double]$Raw[0].close
+              $PrevClose = [double]$Raw[1].close
+              $DayPct    = if ($PrevClose -eq 0) { $null } else { [math]::Round(($YestClose - $PrevClose) / $PrevClose * 100, 2) }
+              [PSCustomObject]@{
+                  Close  = [math]::Round($YestClose, 2)
+                  DayPct = $DayPct
+                  Date   = $Raw[0].date
+              }
+          }
+
+          function Fmt([object]$v) {
+              if ($null -eq $v) { return "N/A" }
+              "$(if ($v -ge 0) { '🟢 +' } else { '🔴 ' })$v%"
+          }
+
+          $Results = @()
+          foreach ($idx in $Indices) {
+              $Flag = switch ($idx.Market) {
+                  "SE" { "🇸🇪" }
+                  "DK" { "🇩🇰" }
+                  default { $idx.Market }
+              }
+              try {
+                  $d = Get-Se1dData $idx.Ticker
+                  $Results += [PSCustomObject]@{
+                      Name   = $idx.Name
+                      Flag   = $Flag
+                      Close  = $d.Close
+                      DayPct = $d.DayPct
+                      Date   = $d.Date
+                  }
+              } catch {
+                  $Results += [PSCustomObject]@{
+                      Name   = $idx.Name
+                      Flag   = $Flag
+                      Close  = $null
+                      DayPct = $null
+                      Error  = $true
+                  }
+              }
+          }
+
+          $Results = $Results | Sort-Object -Property DayPct -Descending
+          $Yesterday = ($Results | Where-Object { $_.Date } | Select-Object -First 1).Date
+
+          $lines = @(
+              "<b>🇸🇪 SE Daily Update</b>"
+              "<i>Yesterday: $Yesterday</i>"
+              ""
+          )
+
+          foreach ($r in $Results) {
+              if ($r.Error) {
+                  $lines += "<b>$($r.Flag) $($r.Name)</b>: unavailable ⚠️"
+              } else {
+                  $lines += "<b>$($r.Flag) $($r.Name)</b>: $($r.Close) $(Fmt $r.DayPct)"
+              }
+          }
+
+          $lines += ""
+          $lines += "<u><i>Via GitHub, repo liars-bench</i></u>"
+
+          $body = @{
+              chat_id    = $env:TELEGRAM_CHAT_ID
+              text       = ($lines -join "`n")
+              parse_mode = "HTML"
+          } | ConvertTo-Json -Depth 3
+
+          Invoke-RestMethod -Uri "https://api.telegram.org/bot$($env:TELEGRAM_TOKEN)/sendMessage" `
+              -Method Post -Body $body -ContentType "application/json; charset=utf-8"
+          Write-Host "SE daily update sent."
