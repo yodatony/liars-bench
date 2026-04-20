@@ -60,7 +60,7 @@ jobs:
 
           $lines = @(
               "<b>Crypto Market Update 📈</b>"
-              "<i>$($Now.ToString('yyyy-MM-dd HH:mm')) CET</i>"
+              "$($Now.ToString('yyyy-MM-dd HH:mm')) CET"
               "Open 24/7 🔔"
               ""
           )
@@ -76,10 +76,7 @@ jobs:
                   $lines += "<b>$Flag $($idx.Name)</b> — unavailable ⚠️"
                   $lines += "  <i>Error: $($_.Exception.Message)</i>"
               }
-              $lines += ""
           }
-
-          $lines += "<u><i>Via GitHub, repo liars-bench</i></u>"
 
           $body = @{
               chat_id    = $env:TELEGRAM_CHAT_ID
