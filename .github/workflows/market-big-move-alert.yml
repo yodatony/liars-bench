@@ -47,8 +47,13 @@ jobs:
                   $Price = [math]::Round([double]$R.close, 2)
 
                   if ([math]::Abs($Pct) -ge $Threshold) {
+                      $Flag    = switch ($idx.Market) {
+                          "US"     { "🇺🇸" }
+                          "CRYPTO" { "💵" }
+                          default  { "" }
+                      }
                       $Arrow   = if ($Pct -ge 0) { "🟢 +$Pct%" } else { "🔴 $Pct%" }
-                      $Alerts += "<b>$($idx.Name)</b>: $Price $Arrow"
+                      $Alerts += "<b>$Flag $($idx.Name)</b>: $Price $Arrow"
                   }
               } catch {
                   Write-Warning "Failed $($idx.Name): $_"
