@@ -129,6 +129,9 @@ jobs:
 
               $NewDocContent = $Response.choices[0].message.content
 
+              # Strip code fence wrapper if the AI returned ```markdown ... ```
+              $NewDocContent = $NewDocContent -replace '^```[a-z]*\r?\n', '' -replace '\r?\n```\s*$', ''
+
               # Create branch, commit, open PR
               $DocExists  = Test-Path $DocFile
               $Action     = if ($DocExists) { "update" } else { "create" }

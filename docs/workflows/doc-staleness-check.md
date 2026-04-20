@@ -1,4 +1,3 @@
-```markdown
 # Workflow Documentation: doc-staleness-check
 
 *Last reviewed: 2026-04-19*
@@ -66,4 +65,3 @@
 The `doc-staleness-check` workflow is designed to ensure that documentation remains up-to-date with the corresponding workflow files within the repository. By checking the commit history, the workflow automatically identifies when the workflow files are updated and generates or modifies documentation accordingly. It leverages GitHub Models API to assist in updating documentation content while maintaining the integrity and accuracy of the workflows.
 
 The workflow operates on a defined schedule and supports manual triggering. It utilizes GitHub Actions' permissions to interact with the repository contents and create pull requests. This structured approach helps to keep the documentation relevant, reduces manual overhead for maintainers, and improves overall repository quality.
-```

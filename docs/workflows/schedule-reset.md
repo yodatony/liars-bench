@@ -1,4 +1,3 @@
-```markdown
 # Schedule Reset Workflow Documentation
 
 **Last reviewed date:** 2026-04-19
@@ -46,4 +45,3 @@ The schedule-reset workflow is designed to force a reevaluation of schedules by 
 - The workflow is triggered manually via `workflow_dispatch`, providing users the flexibility to trigger the reset when needed rather than on a fixed schedule.
 - The workflow uses GitHub Actions to checkout the repository, configure Git, create an empty commit to ensure that changes are recognized, and then push that commit back to the repository.
 - This approach was selected to help maintain the schedule without requiring any actual changes to files, simplifying the reset process.
-```
