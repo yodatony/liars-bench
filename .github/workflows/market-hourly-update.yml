@@ -23,17 +23,12 @@ jobs:
               ($Hour -eq 15 -and $Min -ge 30) -or
               ($Hour -gt 15 -and $Hour -lt 22)
           )
-          $ShowAll = ($Dow -notin @('Saturday','Sunday')) -and (
-              ($Hour -eq 15 -and $Min -ge 30) -or
-              ($Hour -gt 15 -and $Hour -lt 23)
-          )
 
 
           $Indices = @(
-              @{ Name = "S&P 500 (ETF)";          Ticker = "SPY";      Market = "US"     }
-              @{ Name = "DJI (ETF)";              Ticker = "DIA";      Market = "US"     }
-              @{ Name = "Microsoft";        Ticker = "MSFT";     Market = "US"     }
-              @{ Name = "Bitcoin";          Ticker = "BTC/USD";  Market = "CRYPTO" }
+              @{ Name = "S&P 500 (ETF)"; Ticker = "SPY";  Market = "US" }
+              @{ Name = "DJI (ETF)";     Ticker = "DIA";  Market = "US" }
+              @{ Name = "Microsoft";     Ticker = "MSFT"; Market = "US" }
           )
 
           function Get-IndexData([string]$Ticker, [string]$Market) {
@@ -58,7 +53,7 @@ jobs:
                   [math]::Round(($Cur - $From) / $From * 100, 2)
               }
 
-              $WeekIdx = if ($Market -eq 'CRYPTO') { 7 } else { 5 }
+              $WeekIdx = 5
 
               [PSCustomObject]@{
                   Current  = [math]::Round($Cur, 2)
@@ -83,16 +78,14 @@ jobs:
               $out = @()
               foreach ($idx in $IdxList) {
                   try {
-                      $d         = Get-IndexData $idx.Ticker $idx.Market
-                      $DayMarket = $idx.Market -eq "CRYPTO" -or $UsMarketOpen
-                      $Flag      = switch ($idx.Market) {
-                          "SE"     { "🇸🇪" }
-                          "US"     { "🇺🇸" }
-                          "CRYPTO" { "💵" }
-                          default  { $idx.Market }
+                      $d    = Get-IndexData $idx.Ticker $idx.Market
+                      $Flag = switch ($idx.Market) {
+                          "SE"  { "🇸🇪" }
+                          "US"  { "🇺🇸" }
+                          default { $idx.Market }
                       }
                       $out   += "<b>$Flag $($idx.Name)</b> — $($d.Current)"
-                      $out   += "1D: $(if ($DayMarket) { Fmt $d.DayPct } else { FmtArrow $d.DayPct }) | 1W: $(FmtArrow $d.WeekPct)"
+                      $out   += "1D: $(if ($UsMarketOpen) { Fmt $d.DayPct } else { FmtArrow $d.DayPct }) | 1W: $(FmtArrow $d.WeekPct)"
                       $out   += "1M: $(FmtArrow $d.MonthPct) | YTD: $(FmtArrow $d.YtdPct)"
                   } catch {
                       $out   += "<b>$Flag $($idx.Name)</b> — unavailable ⚠️"
@@ -103,29 +96,23 @@ jobs:
               return $out
           }
 
-          $usStatus     = if ($UsMarketOpen) { 'Open 🔔' } else { 'Closed 🔕' }
-          $marketStatus = @("US Market: $usStatus", "Crypto Market: Open 24/7 🔔")
+          $usStatus = if ($UsMarketOpen) { 'Open 🔔' } else { 'Closed 🔕' }
 
           $IsMarketClose = ($Hour -eq 22 -and $Min -eq 0)
-          $ActiveIndices = if ($ShowAll) {
-              $Indices
-          } else {
-              @($Indices | Where-Object { $_.Market -eq 'CRYPTO' })
-          }
 
           $lines = @()
           if ($IsMarketClose) {
               $lines += "<b>🔕 US Market Close 🔕 — <i>$($Now.ToString('yyyy-MM-dd HH:mm')) CET</i></b>"
-              $lines += $marketStatus
+              $lines += "US Market: $usStatus"
               $lines += ""
-              $lines += Get-Lines $ActiveIndices
+              $lines += Get-Lines $Indices
           }
           else {
               $lines += "<b>US Market Update 📈</b>"
               $lines += "<i>$($Now.ToString('yyyy-MM-dd HH:mm')) CET</i>"
-              $lines += $marketStatus
+              $lines += "US Market: $usStatus"
               $lines += ""
-              $lines += Get-Lines $ActiveIndices
+              $lines += Get-Lines $Indices
           }
 
           $lines += "<u><i>Via GitHub, repo liars-bench</i></u>"
