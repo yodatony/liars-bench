@@ -32,7 +32,7 @@ jobs:
               @{ Name = "Bitcoin";          Ticker = "BTC/USD";  Market = "CRYPTO" }
           )
 
-          function Get-IndexData([string]$Ticker) {
+          function Get-IndexData([string]$Ticker, [string]$Market) {
               $Year = $Now.Year.ToString()
 
               $Enc  = [Uri]::EscapeDataString($Ticker)
@@ -54,10 +54,12 @@ jobs:
                   [math]::Round(($Cur - $From) / $From * 100, 2)
               }
 
+              $WeekIdx = if ($Market -eq 'CRYPTO') { 7 } else { 5 }
+
               [PSCustomObject]@{
                   Current  = [math]::Round($Cur, 2)
                   DayPct   = Pct $Rows[1].close
-                  WeekPct  = Pct ($N -ge 6  ? $Rows[5].close  : $Rows[$N-1].close)
+                  WeekPct  = Pct ($N -ge ($WeekIdx + 1) ? $Rows[$WeekIdx].close : $Rows[$N-1].close)
                   MonthPct = Pct ($N -ge 22 ? $Rows[21].close : $Rows[$N-1].close)
                   YtdPct   = Pct $YtdClose
               }
@@ -77,7 +79,7 @@ jobs:
               $out = @()
               foreach ($idx in $IdxList) {
                   try {
-                      $d         = Get-IndexData $idx.Ticker
+                      $d         = Get-IndexData $idx.Ticker $idx.Market
                       $DayMarket = $idx.Market -eq "CRYPTO" -or $UsMarketOpen
                       $Flag      = switch ($idx.Market) {
                           "SE"     { "🇸🇪" }
