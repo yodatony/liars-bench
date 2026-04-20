@@ -79,7 +79,7 @@ jobs:
           $Yesterday = ($Results | Where-Object { $_.Date } | Select-Object -First 1).Date
 
           $lines = @(
-              "<b>🇸🇪 SE Daily Update</b>"
+              "<b>📈 SE Daily Update 🇸🇪</b>"
               "<i>Yesterday: $Yesterday</i>"
               ""
           )
