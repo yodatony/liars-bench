@@ -21,19 +21,18 @@ jobs:
 
           $Threshold = 2.0
           $Indices = @(
-              @{ Name = "NVIDIA";              Ticker = "NVDA";    Market = "US"     }
-              @{ Name = "Apple";               Ticker = "AAPL";    Market = "US"     }
-              @{ Name = "Microsoft";           Ticker = "MSFT";    Market = "US"     }
-              @{ Name = "Amazon";              Ticker = "AMZN";    Market = "US"     }
-              @{ Name = "Google";              Ticker = "GOOGL";   Market = "US"     }
-              @{ Name = "Tesla";          Ticker = "TSLA";    Market = "US"     }
-              @{ Name = "Bitcoin";             Ticker = "BTC/USD"; Market = "CRYPTO" }
+              @{ Name = "NVIDIA";    Ticker = "NVDA";  Market = "US" }
+              @{ Name = "Apple";     Ticker = "AAPL";  Market = "US" }
+              @{ Name = "Microsoft"; Ticker = "MSFT";  Market = "US" }
+              @{ Name = "Amazon";    Ticker = "AMZN";  Market = "US" }
+              @{ Name = "Google";    Ticker = "GOOGL"; Market = "US" }
+              @{ Name = "Tesla";     Ticker = "TSLA";  Market = "US" }
           )
 
           $Alerts = @()
           foreach ($idx in $Indices) {
-              $OutsideHours = ($T -lt 930 -or $T -ge 1330) -and $idx.Market -ne "CRYPTO"
-              $IsWeekend    = $Dow -in @('Saturday','Sunday') -and $idx.Market -ne "CRYPTO"
+              $OutsideHours = ($T -lt 930 -or $T -ge 1330)
+              $IsWeekend    = $Dow -in @('Saturday','Sunday')
               if ($OutsideHours -or $IsWeekend) { continue }
 
               try {
@@ -46,11 +45,7 @@ jobs:
                   $Price = [math]::Round([double]$R.close, 2)
 
                   if ([math]::Abs($Pct) -ge $Threshold) {
-                      $Flag    = switch ($idx.Market) {
-                          "US"     { "🇺🇸" }
-                          "CRYPTO" { "💵" }
-                          default  { "" }
-                      }
+                      $Flag = "🇺🇸"
                       $Arrow   = if ($Pct -ge 0) { "🟢 +$Pct%" } else { "🔴 $Pct%" }
                       $Alerts += "<b>$Flag $($idx.Name)</b>: $Price $Arrow"
                   }
