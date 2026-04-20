@@ -1,6 +1,6 @@
 # market-big-move-alert
 
-> **Last reviewed:** 2026-04-17
+> **Last reviewed:** 2026-04-20  
 > **Workflow file:** [`.github/workflows/market-big-move-alert.yml`](../../.github/workflows/market-big-move-alert.yml)
 
 ---
@@ -9,47 +9,46 @@
 
 ### Triggers
 
-| Trigger | Details |
-|---|---|
-| `workflow_dispatch` | Manual trigger from the GitHub Actions UI |
+| Trigger               | Details                                                 |
+|----------------------|---------------------------------------------------------|
+| `workflow_dispatch`   | Manual trigger from the GitHub Actions UI               |
 
 > Intended to be triggered on a schedule during market hours. No `schedule` cron is currently configured.
 
 ### Required Secrets
 
-| Secret | Purpose |
-|---|---|
-| `TELEGRAM_TOKEN` | Bot token for the Telegram API |
-| `TELEGRAM_CHAT_ID` | Target chat or channel ID |
-| `TWELVEDATA_KEY` | API key for TwelveData market data |
+| Secret              | Purpose                               |
+|---------------------|---------------------------------------|
+| `TELEGRAM_TOKEN`    | Bot token for the Telegram API       |
+| `TELEGRAM_CHAT_ID`  | Target chat or channel ID             |
+| `TWELVEDATA_KEY`    | API key for TwelveData market data    |
 
 ### Alert Threshold
 
-| Variable | Value | Meaning |
-|---|---|---|
+| Variable   | Value | Meaning                                                   |
+|------------|-------|-----------------------------------------------------------|
 | `$Threshold` | `2.0` | Minimum absolute % move from previous close to trigger an alert |
 
 ### Tracked Instruments
 
-| Flag | Name | Ticker | Market |
-|---|---|---|---|
-| 🇺🇸 | NVIDIA | `NVDA` | US |
-| 🇺🇸 | Apple | `AAPL` | US |
-| 🇺🇸 | Microsoft | `MSFT` | US |
-| 🇺🇸 | Amazon | `AMZN` | US |
-| 🇺🇸 | Google | `GOOGL` | US |
-| 🇺🇸 | Berkshire | `BRK.B` | US |
-| 🇺🇸 | Walmart | `WMT` | US |
-| 💵 | Bitcoin | `BTC/USD` | Crypto |
+| Flag | Name      | Ticker      | Market   |
+|------|-----------|-------------|----------|
+| 🇺🇸   | NVIDIA    | `NVDA`      | US       |
+| 🇺🇸   | Apple     | `AAPL`      | US       |
+| 🇺🇸   | Microsoft | `MSFT`      | US       |
+| 🇺🇸   | Amazon    | `AMZN`      | US       |
+| 🇺🇸   | Google    | `GOOGL`     | US       |
+| 🇺🇸   | Tesla     | `TSLA`      | US       |
+| 💵   | Bitcoin   | `BTC/USD`   | Crypto   |
 
 ### Market Hours Filtering
 
 US stocks are only checked during active market hours. Tickers outside their market window are silently skipped — no API call is made and no alert fires.
 
 | Market | Checked during (CET) | Weekends |
-|---|---|---|
-| US | Mon–Fri 15:30–22:00 | Skipped |
-| Crypto | 24/7 | Always checked |
+|--------|-----------------------|----------|
+| US     | Mon–Fri 15:30–22:00   | Skipped  |
+| Crypto | 24/7                  | Always checked |
 
 ### API Endpoint
 
