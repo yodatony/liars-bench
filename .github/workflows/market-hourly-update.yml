@@ -23,6 +23,10 @@ jobs:
               ($Hour -eq 15 -and $Min -ge 30) -or
               ($Hour -gt 15 -and $Hour -lt 22)
           )
+          $ShowAll = ($Dow -notin @('Saturday','Sunday')) -and (
+              ($Hour -eq 15 -and $Min -ge 30) -or
+              ($Hour -gt 15 -and $Hour -lt 23)
+          )
 
 
           $Indices = @(
@@ -102,19 +106,26 @@ jobs:
           $usStatus     = if ($UsMarketOpen) { 'Open 🔔' } else { 'Closed 🔕' }
           $marketStatus = @("US Market: $usStatus", "Crypto Market: Open 24/7 🔔")
 
+          $IsMarketClose = ($Hour -eq 22 -and $Min -eq 0)
+          $ActiveIndices = if ($ShowAll) {
+              $Indices
+          } else {
+              @($Indices | Where-Object { $_.Market -eq 'CRYPTO' })
+          }
+
           $lines = @()
-          if ($Hour -eq 22 -and $Min -eq 0) {
+          if ($IsMarketClose) {
               $lines += "<b>🔕 US Market Close 🔕 — <i>$($Now.ToString('yyyy-MM-dd HH:mm')) CET</i></b>"
               $lines += $marketStatus
               $lines += ""
-              $lines += Get-Lines $Indices
+              $lines += Get-Lines $ActiveIndices
           }
           else {
               $lines += "<b>US Market Update 📈</b>"
               $lines += "<i>$($Now.ToString('yyyy-MM-dd HH:mm')) CET</i>"
               $lines += $marketStatus
               $lines += ""
-              $lines += Get-Lines $Indices
+              $lines += Get-Lines $ActiveIndices
           }
 
           $lines += "<u><i>Via GitHub, repo liars-bench</i></u>"
