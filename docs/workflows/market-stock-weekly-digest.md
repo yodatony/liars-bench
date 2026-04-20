@@ -1,6 +1,6 @@
 # market-stock-weekly-digest
 
-> **Last reviewed:** 2026-04-19  
+> **Last reviewed:** 2026-04-20  
 > **Workflow file:** [`.github/workflows/market-stock-weekly-digest.yml`](../../.github/workflows/market-stock-weekly-digest.yml)
 
 ---
@@ -35,8 +35,7 @@
 | 🇺🇸 | Microsoft | `MSFT` | US | TwelveData |
 | 🇺🇸 | Amazon | `AMZN` | US | TwelveData |
 | 🇺🇸 | Google | `GOOGL` | US | TwelveData |
-| 🇺🇸 | Berkshire | `BRK.B` | US | TwelveData |
-| 🇺🇸 | Walmart | `WMT` | US | TwelveData |
+| 🇺🇸 | Tesla | `TSLA` | US | TwelveData |
 | 💵 | Bitcoin | `BTC/USD` | Crypto | TwelveData |
 
 ### Output Fields
