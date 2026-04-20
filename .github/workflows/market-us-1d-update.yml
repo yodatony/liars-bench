@@ -79,7 +79,7 @@ jobs:
 
           $lines = @(
               "<b>US Daily Update 📈</b>"
-              "<i>Yesterday: $Yesterday</i>"
+              "Yesterday: $Yesterda"
               ""
           )
 
@@ -90,9 +90,6 @@ jobs:
                   $lines += "<b>$($r.Flag) $($r.Name)</b>: $($r.Close) $(Fmt $r.DayPct)"
               }
           }
-
-          $lines += ""
-          $lines += "<u><i>Via GitHub, repo liars-bench</i></u>"
 
           $body = @{
               chat_id    = $env:TELEGRAM_CHAT_ID
