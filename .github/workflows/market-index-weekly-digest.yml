@@ -79,8 +79,8 @@ jobs:
           $LastFriday = $Now.AddDays(-2).ToString('yyyy-MM-dd')
 
           $lines = @(
-              "<b>📊 Weekly Index Market Digest</b>"
-              "<i>Week ending Friday$LastFriday</i>"
+              "<b>Weekly Index Market Digest📊</b>"
+              "<i>Week ending Friday $LastFriday</i>"
               ""
           )
 
