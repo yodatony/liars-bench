@@ -145,7 +145,11 @@ jobs:
               git push origin $BranchName
 
               $PRBodyLines = @(
-                  "This PR was automatically generated because ``$WorkflowFile`` was modified after the documentation was last $Action`d.",
+                  $(if ($DocExists) {
+                      "This PR was automatically generated because ``$WorkflowFile`` was modified after the documentation was last updated."
+                  } else {
+                      "This PR was automatically generated because ``$WorkflowFile`` exists but has no documentation yet."
+                  }),
                   "",
                   "| | Date |",
                   "|---|---|",
