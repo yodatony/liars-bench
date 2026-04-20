@@ -26,8 +26,7 @@ jobs:
               @{ Name = "Microsoft";           Ticker = "MSFT";    Market = "US"     }
               @{ Name = "Amazon";              Ticker = "AMZN";    Market = "US"     }
               @{ Name = "Google";              Ticker = "GOOGL";   Market = "US"     }
-              @{ Name = "Berkshire";           Ticker = "BRK.B";   Market = "US"     }
-              @{ Name = "Walmart";             Ticker = "WMT";     Market = "US"     }
+              @{ Name = "Tesla";          Ticker = "TSLA";    Market = "US"     }
               @{ Name = "Bitcoin";             Ticker = "BTC/USD"; Market = "CRYPTO" }
           )
 
