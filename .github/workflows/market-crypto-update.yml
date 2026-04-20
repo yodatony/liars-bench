@@ -61,7 +61,7 @@ jobs:
           $lines = @(
               "<b>Crypto Market Update 📈</b>"
               "<i>$($Now.ToString('yyyy-MM-dd HH:mm')) CET</i>"
-              "Crypto Market: Open 24/7 🔔"
+              "Open 24/7 🔔"
               ""
           )
 
