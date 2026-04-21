@@ -1,4 +1,4 @@
-# Market SE 1D Update Workflow
+# market-se-1d-update Workflow
 
 **Last reviewed date:** 2026-04-21
 
