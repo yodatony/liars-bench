@@ -109,7 +109,7 @@ jobs:
           else {
               $lines += "<b>US Market Update 📈</b>"
               $lines += "$($Now.ToString('yyyy-MM-dd HH:mm')) CET"
-              $lines += "$usStatus"
+              $lines += "<i>$usStatus</i>"
               $lines += ""
               $lines += Get-Lines $Indices
           }
