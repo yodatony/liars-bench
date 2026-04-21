@@ -1,15 +1,15 @@
-# Workflow Documentation: doc-staleness-check
-
-*Last reviewed: 2026-04-21*
+# Workflow documentation: doc-staleness-check
+**Workflow file:** `.github/workflows/doc-staleness-check.yml`  
+**Last reviewed date:** 2026-04-21
 
 ## Reference
 
 ### Triggers
 
-| Trigger Type     | Schedule Expression  |
-|-------------------|---------------------|
-| Manual Trigger    | `workflow_dispatch` |
-| Scheduled Trigger  | `55 2 1 * *` (1st of every month at 02:55 UTC) |
+| Trigger Type       | Schedule Expression  |
+|---------------------|---------------------|
+| Manual Trigger      | `workflow_dispatch` |
+| Scheduled Trigger    | `55 2 1 * *` (1st of every month at 02:55 UTC) |
 
 ### Secrets
 
@@ -25,19 +25,19 @@
 
 ### Output Fields
 
-| Field            | Description                                       |
-|------------------|---------------------------------------------------|
-| `PR Title`       | Title of the pull request created for documentation updates. |
-| `Doc Last Changed` | Date of the last commit for the documentation file. |
+| Field               | Description                                       |
+|---------------------|---------------------------------------------------|
+| `PR Title`          | Title of the pull request created for documentation updates. |
+| `Doc Last Changed`  | Date of the last commit for the documentation file. |
 | `Workflow Last Changed` | Date of the last commit for the workflow file. |
-| `Is Stale`       | Boolean value indicating if the documentation is stale compared to the workflow file. |
+| `Is Stale`          | Boolean value indicating if the documentation is stale compared to the workflow file. |
 
 ### API/Data Sources
 
 - GitHub API (for repository actions and pull request management).
 - GitHub Models API (for generating updates to the documentation).
 
-## How-to Guides
+## How-to guides
 
 ### Creating or Updating Documentation
 
@@ -62,14 +62,11 @@
 
 ## Explanation
 
-The `doc-staleness-check` workflow is designed to ensure that documentation remains up-to-date with the corresponding workflow files within the repository. By checking the commit history, the workflow automatically identifies when the workflow files are updated and generates or modifies documentation accordingly. It leverages GitHub Models API to assist in updating documentation content while maintaining the integrity and accuracy of the workflows.
+The `doc-staleness-check` workflow is designed to ensure that documentation remains up-to-date with the corresponding workflow files within the repository. By checking the commit history, the workflow automatically identifies when the workflow files are updated and generates or modifies documentation accordingly. It leverages the GitHub Models API to assist in updating documentation content while maintaining the integrity and accuracy of the workflows.
 
 The workflow operates on a defined schedule and supports manual triggering. It utilizes GitHub Actions' permissions to interact with the repository contents and create pull requests. This structured approach helps to keep the documentation relevant, reduces manual overhead for maintainers, and improves overall repository quality.
 
 ## Recent commits to the workflow since the doc was last updated
 
-- b131bc5 Update doc-staleness-check.yml  
-- 6efbe9c fix  
-- 08d9927 changed prompt again  
-- 017cb2f changed prompt  
-- c1995dd changed prompt  
+- ed40991 bug fix
+- e6ff82e changed prompt slightly
