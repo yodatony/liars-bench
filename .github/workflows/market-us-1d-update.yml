@@ -3,7 +3,7 @@ name: market-us-1d-update
 on:
   workflow_dispatch:
   schedule:
-    - cron: '56 5 * * 2-6'  
+    - cron: '56 4 * * 2-6'  
 
 jobs:
   us-1d-update:
