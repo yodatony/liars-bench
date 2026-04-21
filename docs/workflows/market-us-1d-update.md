@@ -14,16 +14,16 @@
 - `TWELVEDATA_KEY`: API key for Twelve Data service.
 
 ### Tickers/Instruments Table
-| Name                    | Ticker | Market |
-|-------------------------|--------|--------|
-| NVIDIA                  | NVDA   | US     |
-| Apple                   | AAPL   | US     |
-| Microsoft               | MSFT   | US     |
-| Amazon                  | AMZN   | US     |
-| Google                  | GOOGL  | US     |
-| Tesla                   | TSLA   | US     |
-| S&P 500 (ETF)          | SPY    | US     |
-| DJI (ETF)              | DIA    | US     |
+| Name                    | Ticker | Market | Own  |
+|-------------------------|--------|--------|------|
+| NVIDIA                  | NVDA   | US     | false|
+| Apple                   | AAPL   | US     | false|
+| Microsoft               | MSFT   | US     | true |
+| Amazon                  | AMZN   | US     | false|
+| Google A                | GOOGL  | US     | false|
+| Tesla                   | TSLA   | US     | false|
+| S&P 500 (ETF)          | SPY    | US     | false|
+| DJI (ETF)              | DIA    | US     | false|
 
 ### Output Fields
 - `Name`: The name of the stock or ETF.
@@ -32,6 +32,7 @@
 - `DayPct`: Percentage change for the day.
 - `Date`: Date of the data reported.
 - `Own`: Indicates whether the stock or ETF is owned.
+- `Error`: Indicates if there was an error fetching data.
 
 ### API/Data Sources
 - Twelve Data API for stock quotes: `https://api.twelvedata.com/quote?symbol=<ticker>&apikey=<your_key>`.
