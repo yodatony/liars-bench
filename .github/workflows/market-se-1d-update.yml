@@ -3,7 +3,7 @@ name: market-se-1d-update
 on:
   workflow_dispatch:
   schedule:
-    - cron: '51 5 * * 2-6'
+    - cron: '51 4 * * 2-6'
 
 jobs:
   se-1d-update:
