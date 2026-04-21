@@ -21,12 +21,12 @@ jobs:
 
           $Threshold = 2.0
           $Indices = @(
-              @{ Name = "NVIDIA";    Ticker = "NVDA";  Market = "US" }
-              @{ Name = "Apple";     Ticker = "AAPL";  Market = "US" }
-              @{ Name = "Microsoft"; Ticker = "MSFT";  Market = "US" }
-              @{ Name = "Amazon";    Ticker = "AMZN";  Market = "US" }
-              @{ Name = "Google";    Ticker = "GOOGL"; Market = "US" }
-              @{ Name = "Tesla";     Ticker = "TSLA";  Market = "US" }
+              @{ Name = "NVIDIA";    Ticker = "NVDA";  Market = "US"; Own = $false }
+              @{ Name = "Apple";     Ticker = "AAPL";  Market = "US"; Own = $false }
+              @{ Name = "Microsoft"; Ticker = "MSFT";  Market = "US"; Own = $true  }
+              @{ Name = "Amazon";    Ticker = "AMZN";  Market = "US"; Own = $false }
+              @{ Name = "Google";    Ticker = "GOOGL"; Market = "US"; Own = $false }
+              @{ Name = "Tesla";     Ticker = "TSLA";  Market = "US"; Own = $false }
           )
 
           $Alerts = @()
@@ -45,9 +45,10 @@ jobs:
                   $Price = [math]::Round([double]$R.close, 2)
 
                   if ([math]::Abs($Pct) -ge $Threshold) {
-                      $Flag = "🇺🇸"
-                      $Arrow   = if ($Pct -ge 0) { "🟢 +$Pct%" } else { "🔴 $Pct%" }
-                      $Alerts += "<b>$Flag $($idx.Name)</b>: $Price $Arrow"
+                      $Flag      = "🇺🇸"
+                      $Portfolio = if ($idx.Own) { ' 💼' } else { '' }
+                      $Arrow     = if ($Pct -ge 0) { "🟢 +$Pct%" } else { "🔴 $Pct%" }
+                      $Alerts   += "<b>$Flag $($idx.Name)</b>: $Price $Arrow$Portfolio"
                   }
               } catch {
                   Write-Warning "Failed $($idx.Name): $_"

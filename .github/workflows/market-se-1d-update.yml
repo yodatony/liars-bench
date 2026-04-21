@@ -20,11 +20,17 @@ jobs:
           $Now = [System.TimeZoneInfo]::ConvertTimeFromUtc([DateTime]::UtcNow, $TZ)
 
           $Indices = @(
-              @{ Name = "OMXSPI";        Ticker = "OMXSPI.INDX"; Market = "SE" }
-              @{ Name = "OMXS30";        Ticker = "OMXS30.INDX"; Market = "SE" }
-              @{ Name = "Atlas Copco B"; Ticker = "ATCO-B.ST";   Market = "SE" }
-              @{ Name = "Investor B";    Ticker = "INVE-B.ST";   Market = "SE" }
-              @{ Name = "Novo Nordisk B";Ticker = "NOVO-B.CO";   Market = "DK" }
+              @{ Name = "OMXSPI";          Ticker = "OMXSPI.INDX"; Market = "SE"; Own = $false }
+              @{ Name = "OMXS30";          Ticker = "OMXS30.INDX"; Market = "SE"; Own = $false }
+              @{ Name = "Atlas Copco B";   Ticker = "ATCO-B.ST";   Market = "SE"; Own = $true  }
+              @{ Name = "Investor B";      Ticker = "INVE-B.ST";   Market = "SE"; Own = $true  }
+              @{ Name = "Volvo B";         Ticker = "VOLV-B.ST";   Market = "SE"; Own = $false }
+              @{ Name = "SAAB B";          Ticker = "SAAB-B.ST";   Market = "SE"; Own = $false }
+              @{ Name = "Swedbank A";      Ticker = "SWED-A.ST";   Market = "SE"; Own = $false }
+              @{ Name = "Handelsbanken A"; Ticker = "SHB-A.ST";    Market = "SE"; Own = $false }
+              @{ Name = "SBB Norden B";   Ticker = "SBB-B.ST";    Market = "SE"; Own = $false }
+              @{ Name = "SSAB B";          Ticker = "SSAB-B.ST";   Market = "SE"; Own = $false }
+              @{ Name = "Novo Nordisk B";  Ticker = "NOVO-B.CO";   Market = "DK"; Own = $true  }
           )
 
           function Get-Se1dData([string]$Ticker) {
@@ -63,6 +69,7 @@ jobs:
                       Close  = $d.Close
                       DayPct = $d.DayPct
                       Date   = $d.Date
+                      Own    = $idx.Own
                   }
               } catch {
                   $Results += [PSCustomObject]@{
@@ -70,6 +77,7 @@ jobs:
                       Flag   = $Flag
                       Close  = $null
                       DayPct = $null
+                      Own    = $idx.Own
                       Error  = $true
                   }
               }
@@ -86,10 +94,11 @@ jobs:
           )
 
           foreach ($r in $Results) {
+              $Portfolio = if ($r.Own) { ' 💼' } else { '' }
               if ($r.Error) {
-                  $lines += "<b>$($r.Flag) $($r.Name)</b>: unavailable ⚠️"
+                  $lines += "<b>$($r.Flag) $($r.Name)</b>: unavailable ⚠️$Portfolio"
               } else {
-                  $lines += "<b>$($r.Flag) $($r.Name)</b>: $($r.Close) $(Fmt $r.DayPct)"
+                  $lines += "<b>$($r.Flag) $($r.Name)</b>: $($r.Close) $(Fmt $r.DayPct)$Portfolio"
               }
           }
 
