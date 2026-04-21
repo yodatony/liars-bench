@@ -1,5 +1,5 @@
 # Workflow documentation: doc-staleness-check
-**Workflow file:** `.github/workflows/doc-staleness-check.yml`  
+**Workflow file:** [.github/workflows/doc-staleness-check.yml](../../.github/workflows/doc-staleness-check.yml)  
 **Last reviewed date:** 2026-04-21
 
 ## Reference
@@ -70,3 +70,4 @@ The workflow operates on a defined schedule and supports manual triggering. It u
 
 - ed40991 bug fix
 - e6ff82e changed prompt slightly
+- 698b8bc changed prompt to create a link
