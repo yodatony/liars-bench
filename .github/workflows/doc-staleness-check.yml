@@ -79,8 +79,13 @@ jobs:
               $CommitList = ($CommitLines | Where-Object { $_ -ne "" }) -join "`n"
 
               # Call GitHub Models API (gpt-4o-mini, free with GITHUB_TOKEN)
+              $DocContext = if ($CurrentDoc) {
+                  "You are updating an existing documentation file. Preserve all existing Explanation and How-to content unless the workflow makes it incorrect."
+              } else {
+                  "You are creating a new documentation file from scratch. Write complete Explanation and How-to sections based on the workflow."
+              }
               $PromptLines = @(
-                  "You are a technical writer. Update the documentation file below to reflect the current state of the workflow file.",
+                  "You are a technical writer. $DocContext",
                   "",
                   "Follow the Diataxis framework with these four sections:",
                   "1. Reference - triggers, secrets, tickers/instruments table, output fields, API/data sources",
@@ -88,11 +93,11 @@ jobs:
                   "3. Explanation - design decisions and reasoning",
                   "",
                   "Rules:",
-                  "- At the top of the doc, it should say 'Workflow documentation: <workflow name>' then reference the workflow file below",
-                  "- Create/update the Last reviewed date in the beginning to $Today",
-                  "- Keep all existing Explanation and How-to content unless the workflow changes make it incorrect or not does not exist",
-                  "- Create/update Reference tables to match the current workflow exactly",
+                  "- The document must start with: '# Workflow documentation: <Workflow Display Name>'",
+                  "- Line 2 must be: '**Workflow file:** \``.github/workflows/$WorkflowName.yml\`\`'",
+                  "- Line 3 must be: '**Last reviewed date:** $Today'",
                   "- Use markdown tables for all lists of items (triggers, secrets, fields, tickers, etc.)",
+                  "- Create/update all Reference tables to exactly match the current workflow file",
                   "- Do not add commentary or preamble - output only the raw markdown document",
                   "",
                   "## Current workflow file ($WorkflowFile)",
