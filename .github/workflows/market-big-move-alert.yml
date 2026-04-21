@@ -59,7 +59,7 @@ jobs:
           $lines = @(
               "<b>Big Move Alert ⚠️</b>"
               "$($Now.ToString('yyyy-MM-dd HH:mm')) CET"
-              "Intraday move >2% from previous close"
+              "<i>Intraday move >2% from previous close</i>"
               ""
           ) + $Alerts
 
