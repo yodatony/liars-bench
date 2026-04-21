@@ -1,6 +1,6 @@
 # market-big-move-alert
 
-> **Last reviewed:** 2026-04-20  
+> **Last reviewed:** 2026-04-21  
 > **Workflow file:** [`.github/workflows/market-big-move-alert.yml`](../../.github/workflows/market-big-move-alert.yml)
 
 ---
@@ -31,15 +31,14 @@
 
 ### Tracked Instruments
 
-| Flag | Name      | Ticker      | Market   |
-|------|-----------|-------------|----------|
-| 🇺🇸   | NVIDIA    | `NVDA`      | US       |
-| 🇺🇸   | Apple     | `AAPL`      | US       |
-| 🇺🇸   | Microsoft | `MSFT`      | US       |
-| 🇺🇸   | Amazon    | `AMZN`      | US       |
-| 🇺🇸   | Google    | `GOOGL`     | US       |
-| 🇺🇸   | Tesla     | `TSLA`      | US       |
-| 💵   | Bitcoin   | `BTC/USD`   | Crypto   |
+| Flag | Name      | Ticker      | Market   | Own   |
+|------|-----------|-------------|----------|-------|
+| 🇺🇸   | NVIDIA    | `NVDA`      | US       | false |
+| 🇺🇸   | Apple     | `AAPL`      | US       | false |
+| 🇺🇸   | Microsoft | `MSFT`      | US       | true  |
+| 🇺🇸   | Amazon    | `AMZN`      | US       | false |
+| 🇺🇸   | Google    | `GOOGL`     | US       | false |
+| 🇺🇸   | Tesla     | `TSLA`      | US       | false |
 
 ### Market Hours Filtering
 
@@ -48,7 +47,6 @@ US stocks are only checked during active market hours. Tickers outside their mar
 | Market | Checked during (CET) | Weekends |
 |--------|-----------------------|----------|
 | US     | Mon–Fri 15:30–22:00   | Skipped  |
-| Crypto | 24/7                  | Always checked |
 
 ### API Endpoint
 
@@ -77,10 +75,8 @@ $Threshold = 2.0   # Change this value
 Add a new entry to `$Indices`:
 
 ```powershell
-@{ Name = "Your Name"; Ticker = "TICK"; Market = "US" }
+@{ Name = "Your Name"; Ticker = "TICK"; Market = "US"; Own = $false }
 ```
-
-For crypto, use `Market = "CRYPTO"` to bypass the market hours filter.
 
 ### How to add a scheduled trigger
 
