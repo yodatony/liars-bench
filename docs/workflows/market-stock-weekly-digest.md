@@ -40,7 +40,7 @@
 | 🇺🇸 | Apple              | `AAPL`      | US     | TwelveData            |
 | 🇺🇸 | Microsoft          | `MSFT`      | US     | TwelveData            |
 | 🇺🇸 | Amazon             | `AMZN`      | US     | TwelveData            |
-| 🇺🇸 | Google             | `GOOGL`     | US     | TwelveData            |
+| 🇺🇸 | Google A           | `GOOGL`     | US     | TwelveData            |
 | 🇺🇸 | Tesla              | `TSLA`      | US     | TwelveData            |
 | 💵 | Bitcoin            | `BTC/USD`   | Crypto | TwelveData            |
 
