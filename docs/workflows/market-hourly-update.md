@@ -1,6 +1,6 @@
 # market-hourly-update
 
-> **Last reviewed:** 2026-04-17  
+> **Last reviewed:** 2026-04-21  
 > **Workflow file:** [`.github/workflows/market-hourly-update.yml`](../../.github/workflows/market-hourly-update.yml)
 
 ---
@@ -30,7 +30,6 @@
 | 🇺🇸 | S&P 500 (ETF) | `SPY` | US | TwelveData |
 | 🇺🇸 | DJI (ETF) | `DIA` | US | TwelveData |
 | 🇺🇸 | Microsoft | `MSFT` | US | TwelveData |
-| 💵 | Bitcoin is like a lottery I think | `BTC/USD` | Crypto | TwelveData |
 
 ### Output Fields
 
@@ -49,7 +48,6 @@ Each instrument is reported with:
 | Market | Open hours (CET) | Weekend |
 |---|---|---|
 | US | Mon–Fri 15:30–22:00 | Closed |
-| Crypto | 24/7 | Open |
 
 When US market is **closed**, the 1D field uses neutral arrows (▲/▼) instead of green/red dots (🟢/🔴) to indicate the value is not a live intraday move.
 
