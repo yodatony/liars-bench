@@ -79,7 +79,8 @@ jobs:
 
           $lines = @(
               "<b>US Daily Update 📈</b>"
-              "Yesterday: $Yesterda"
+              "Yesterday: $Yesterday"
+              "<i>Previous trading day movement</i>
               ""
           )
 
