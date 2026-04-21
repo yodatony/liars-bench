@@ -94,7 +94,7 @@ jobs:
                   "",
                   "Rules:",
                   "- The document must start with: '# Workflow documentation: <Workflow Display Name>'",
-                  "- Line 2 must be exactly: **Workflow file:** ```.github/workflows/$WorkflowName.yml```",
+                  "- Line 2 must be exactly: **Workflow file:** .github/workflows/$WorkflowName.yml (in inline code)",
                   "- Line 3 must be exactly: **Last reviewed date:** $Today",
                   "- Use markdown tables for all lists of items (triggers, secrets, fields, tickers, etc.)",
                   "- Create/update all Reference tables to exactly match the current workflow file",
