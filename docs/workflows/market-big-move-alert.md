@@ -37,7 +37,7 @@
 | 🇺🇸   | Apple     | `AAPL`      | US       | false |
 | 🇺🇸   | Microsoft | `MSFT`      | US       | true  |
 | 🇺🇸   | Amazon    | `AMZN`      | US       | false |
-| 🇺🇸   | Google    | `GOOGL`     | US       | false |
+| 🇺🇸   | Google A  | `GOOGL`     | US       | false |
 | 🇺🇸   | Tesla     | `TSLA`      | US       | false |
 
 ### Market Hours Filtering
