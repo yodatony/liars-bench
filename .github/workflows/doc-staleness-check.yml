@@ -91,7 +91,7 @@ jobs:
                   "- Update the Last reviewed date at the top to $Today",
                   "- Keep all existing Explanation and How-to content unless the workflow changes make it incorrect",
                   "- Update Reference tables to match the current workflow exactly",
-                  "- Always make tables if possible",
+                  "- Use markdown tables for all lists of items (triggers, secrets, fields, tickers, etc.)",
                   "- Do not add commentary or preamble - output only the raw markdown document",
                   "",
                   "## Current workflow file ($WorkflowFile)",
