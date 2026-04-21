@@ -5,13 +5,17 @@
 ## Reference
 
 ### Triggers
-- **workflow_dispatch**: Allows manual triggering of the workflow.
-- **schedule**: Runs automatically at 04:56 UTC, Tuesday to Saturday.
+| Trigger | Description |
+|---|---|
+| `workflow_dispatch` | Allows manual triggering of the workflow. |
+| `schedule` | Runs automatically at 04:56 UTC, Tuesday to Saturday. |
 
 ### Secrets
-- `TELEGRAM_TOKEN`: Your Telegram Bot API token.
-- `TELEGRAM_CHAT_ID`: The chat ID where updates will be sent.
-- `TWELVEDATA_KEY`: API key for Twelve Data service.
+| Secret | Description |
+|---|---|
+| `TELEGRAM_TOKEN` | Your Telegram Bot API token. |
+| `TELEGRAM_CHAT_ID` | The chat ID where updates will be sent. |
+| `TWELVEDATA_KEY` | API key for Twelve Data service. |
 
 ### Tickers/Instruments Table
 | Name                    | Ticker | Market | Own  |
@@ -26,13 +30,15 @@
 | DJI (ETF)              | DIA    | US     | false|
 
 ### Output Fields
-- `Name`: The name of the stock or ETF.
-- `Flag`: Market flag emoji.
-- `Close`: Closing price of the stock.
-- `DayPct`: Percentage change for the day.
-- `Date`: Date of the data reported.
-- `Own`: Indicates whether the stock or ETF is owned.
-- `Error`: Indicates if there was an error fetching data.
+| Field | Description |
+|---|---|
+| `Name` | The name of the stock or ETF. |
+| `Flag` | Market flag emoji. |
+| `Close` | Closing price of the stock. |
+| `DayPct` | Percentage change for the day. |
+| `Date` | Date of the data reported. |
+| `Own` | Indicates whether the stock or ETF is owned. |
+| `Error` | Indicates if there was an error fetching data. |
 
 ### API/Data Sources
 - Twelve Data API for stock quotes: `https://api.twelvedata.com/quote?symbol=<ticker>&apikey=<your_key>`.
