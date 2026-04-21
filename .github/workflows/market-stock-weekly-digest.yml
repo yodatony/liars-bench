@@ -34,7 +34,7 @@ jobs:
               @{ Name = "Apple";           Ticker = "AAPL";      Market = "US"; Own = $false }
               @{ Name = "Microsoft";       Ticker = "MSFT";      Market = "US"; Own = $true  }
               @{ Name = "Amazon";          Ticker = "AMZN";      Market = "US"; Own = $false }
-              @{ Name = "Google";          Ticker = "GOOGL";     Market = "US"; Own = $false }
+              @{ Name = "Google A";        Ticker = "GOOGL";     Market = "US"; Own = $false }
               @{ Name = "Tesla";           Ticker = "TSLA";      Market = "US"; Own = $false }
               @{ Name = "Bitcoin";         Ticker = "BTC/USD";   Market = "CRYPTO"; Own = $false }
           )
