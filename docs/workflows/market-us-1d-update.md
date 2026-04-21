@@ -1,12 +1,12 @@
 # Market US 1D Update Workflow Documentation
 
-**Last reviewed date:** 2026-04-20
+**Last reviewed date:** 2026-04-21
 
 ## Reference
 
 ### Triggers
 - **workflow_dispatch**: Allows manual triggering of the workflow.
-- **schedule**: Runs automatically on weekdays at 12:41 UTC.
+- **schedule**: Runs automatically at 04:56 UTC, Tuesday to Saturday.
 
 ### Secrets
 - `TELEGRAM_TOKEN`: Your Telegram Bot API token.
@@ -31,6 +31,7 @@
 - `Close`: Closing price of the stock.
 - `DayPct`: Percentage change for the day.
 - `Date`: Date of the data reported.
+- `Own`: Indicates whether the stock or ETF is owned.
 
 ### API/Data Sources
 - Twelve Data API for stock quotes: `https://api.twelvedata.com/quote?symbol=<ticker>&apikey=<your_key>`.
