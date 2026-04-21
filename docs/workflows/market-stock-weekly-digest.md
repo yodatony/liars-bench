@@ -1,6 +1,6 @@
 # market-stock-weekly-digest
 
-> **Last reviewed:** 2026-04-20  
+> **Last reviewed:** 2026-04-21  
 > **Workflow file:** [`.github/workflows/market-stock-weekly-digest.yml`](../../.github/workflows/market-stock-weekly-digest.yml)
 
 ---
@@ -25,32 +25,38 @@
 
 ### Tracked Instruments
 
-| Flag | Name | Ticker | Market | Data Source |
-|---|---|---|---|---|
-| 🇸🇪 | Atlas Copco B | `ATCO-B.ST` | SE | EOD Historical Data |
-| 🇸🇪 | Investor B | `INVE-B.ST` | SE | EOD Historical Data |
-| 🇩🇰 | Novo Nordisk B | `NOVO-B.CO` | DK | EOD Historical Data |
-| 🇺🇸 | NVIDIA | `NVDA` | US | TwelveData |
-| 🇺🇸 | Apple | `AAPL` | US | TwelveData |
-| 🇺🇸 | Microsoft | `MSFT` | US | TwelveData |
-| 🇺🇸 | Amazon | `AMZN` | US | TwelveData |
-| 🇺🇸 | Google | `GOOGL` | US | TwelveData |
-| 🇺🇸 | Tesla | `TSLA` | US | TwelveData |
-| 💵 | Bitcoin | `BTC/USD` | Crypto | TwelveData |
+| Flag | Name               | Ticker      | Market | Data Source          |
+|---|--------------------|-------------|--------|-----------------------|
+| 🇸🇪 | Atlas Copco B      | `ATCO-B.ST` | SE     | EOD Historical Data    |
+| 🇸🇪 | Investor B         | `INVE-B.ST` | SE     | EOD Historical Data    |
+| 🇸🇪 | Volvo B            | `VOLV-B.ST` | SE     | EOD Historical Data    |
+| 🇸🇪 | SAAB B             | `SAAB-B.ST` | SE     | EOD Historical Data    |
+| 🇸🇪 | Swedbank A         | `SWED-A.ST` | SE     | EOD Historical Data    |
+| 🇸🇪 | Handelsbanken A     | `SHB-A.ST`  | SE     | EOD Historical Data    |
+| 🇸🇪 | SBB Norden B       | `SBB-B.ST`  | SE     | EOD Historical Data    |
+| 🇸🇪 | SSAB B             | `SSAB-B.ST` | SE     | EOD Historical Data    |
+| 🇩🇰 | Novo Nordisk B     | `NOVO-B.CO` | DK     | EOD Historical Data    |
+| 🇺🇸 | NVIDIA             | `NVDA`      | US     | TwelveData            |
+| 🇺🇸 | Apple              | `AAPL`      | US     | TwelveData            |
+| 🇺🇸 | Microsoft          | `MSFT`      | US     | TwelveData            |
+| 🇺🇸 | Amazon             | `AMZN`      | US     | TwelveData            |
+| 🇺🇸 | Google             | `GOOGL`     | US     | TwelveData            |
+| 🇺🇸 | Tesla              | `TSLA`      | US     | TwelveData            |
+| 💵 | Bitcoin            | `BTC/USD`   | Crypto | TwelveData            |
 
 ### Output Fields
 
-| Field | Description |
-|---|---|
-| Close | Last available daily closing price |
-| WeekPct | % change vs close 5 trading days ago |
+| Field  | Description                                |
+|---|--------------------------------------------|
+| Close  | Last available daily closing price          |
+| WeekPct | % change vs close 5 trading days ago    |
 
 ### Data Sources
 
-| Market | API | Endpoint | Notes |
-|---|---|---|---|
-| US / Crypto | TwelveData | `/time_series` | Daily candles, 252 days |
-| SE / DK | EOD Historical Data | `/eod` | Daily candles, 252 days, end-of-day only |
+| Market    | API                  | Endpoint                   | Notes                                           |
+|----------|----------------------|----------------------------|-------------------------------------------------|
+| US / Crypto | TwelveData         | `/time_series`             | Daily candles, 252 days                         |
+| SE / DK  | EOD Historical Data   | `/eod`                     | Daily candles, 252 days, end-of-day only       |
 
 > **Note:** SE and DK tickers use EOD Historical Data which only provides end-of-day prices on the free plan. This is appropriate for a weekly digest.
 
