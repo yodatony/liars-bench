@@ -1,6 +1,6 @@
 # market-index-weekly-digest
 
-> **Last reviewed:** 2026-04-19
+> **Last reviewed:** 2026-04-21
 > **Workflow file:** [`.github/workflows/market-index-weekly-digest.yml`](../../.github/workflows/market-index-weekly-digest.yml)
 
 ---
@@ -95,7 +95,7 @@ TwelveData has limited or no coverage of Nasdaq Stockholm index tickers on the f
 
 ### Why OMXSPI and OMXS30 are both tracked
 
-- **OMXS30** — The 30 most traded Swedish large-caps. The headline index for Swedish market sentiment, widely referenced in financial media.
+- **OMXS30** — The 30 most traded Swedish large caps. The headline index for Swedish market sentiment, widely referenced in financial media.
 - **OMXSPI** — All listed stocks on Nasdaq Stockholm (~350 companies). Broader market view, slower moving, useful for comparing breadth vs the large-cap index.
 
 ### Why the digest runs on Sunday
