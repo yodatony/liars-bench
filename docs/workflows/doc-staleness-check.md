@@ -68,5 +68,8 @@ The workflow operates on a defined schedule and supports manual triggering. It u
 
 ## Recent commits to the workflow since the doc was last updated
 
-b131bc5 Update doc-staleness-check.yml  
-6efbe9c fix
+- b131bc5 Update doc-staleness-check.yml  
+- 6efbe9c fix  
+- 08d9927 changed prompt again  
+- 017cb2f changed prompt  
+- c1995dd changed prompt  
