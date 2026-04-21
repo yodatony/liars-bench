@@ -80,7 +80,7 @@ jobs:
           $lines = @(
               "<b>US Daily Update 📈</b>"
               "Yesterday: $Yesterday"
-              "<i>Previous trading day movement</i>
+              "<i>Previous trading day movement</i>"
               ""
           )
 
