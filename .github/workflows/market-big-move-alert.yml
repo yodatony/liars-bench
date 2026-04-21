@@ -1,7 +1,7 @@
 name: market-big-move-alert
 
 on:
-  workflow_dispatch:
+  workflow_dispatch: # Triggered externally on schedule via cron-job.org
 
 jobs:
   check-moves:
