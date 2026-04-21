@@ -1,6 +1,6 @@
 # Market SE 1D Update Workflow
 
-**Last reviewed date:** 2026-04-20
+**Last reviewed date:** 2026-04-21
 
 ## Reference
 
@@ -8,7 +8,7 @@
 | Trigger            | Description                                             |
 |--------------------|---------------------------------------------------------|
 | workflow_dispatch   | Manually trigger the workflow.                          |
-| schedule           | Automatically run the workflow based on the cron schedule ('51 5 * * 2-6'). |
+| schedule           | Automatically run the workflow based on the cron schedule ('51 4 * * 2-6'). |
 
 ### Secrets
 | Secret              | Description                        |
@@ -18,13 +18,19 @@
 | EODHD_KEY           | API key for accessing EODHD service. |
 
 ### Tickers/Instruments Table
-| Name              | Ticker         | Market |
-|-------------------|----------------|--------|
-| OMXSPI            | OMXSPI.INDX    | SE     |
-| OMXS30            | OMXS30.INDX    | SE     |
-| Atlas Copco B     | ATCO-B.ST      | SE     |
-| Investor B        | INVE-B.ST      | SE     |
-| Novo Nordisk B    | NOVO-B.CO      | DK     |
+| Name              | Ticker         | Market | Own  |
+|-------------------|----------------|--------|------|
+| OMXSPI            | OMXSPI.INDX    | SE     | No   |
+| OMXS30            | OMXS30.INDX    | SE     | No   |
+| Atlas Copco B     | ATCO-B.ST      | SE     | Yes  |
+| Investor B        | INVE-B.ST      | SE     | Yes  |
+| Volvo B           | VOLV-B.ST      | SE     | No   |
+| SAAB B            | SAAB-B.ST      | SE     | No   |
+| Swedbank A        | SWED-A.ST      | SE     | No   |
+| Handelsbanken A   | SHB-A.ST       | SE     | No   |
+| SBB Norden B      | SBB-B.ST       | SE     | No   |
+| SSAB B            | SSAB-B.ST      | SE     | No   |
+| Novo Nordisk B    | NOVO-B.CO      | DK     | Yes  |
 
 ### Output Fields
 | Field   | Description                                     |
@@ -43,7 +49,7 @@
 ## How-to Guides
 
 ### Sending a Daily Update
-1. Trigger the workflow manually via GitHub Actions or wait for the scheduled time (5:51 AM UTC Tuesday to Saturday).
+1. Trigger the workflow manually via GitHub Actions or wait for the scheduled time (4:51 AM UTC Tuesday to Saturday).
 2. The workflow fetches the necessary data for the defined indices/tickers.
 3. The data is processed, and a summary message is formatted.
 4. The message is sent to the specified Telegram chat.
