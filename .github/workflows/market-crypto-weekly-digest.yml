@@ -1,0 +1,105 @@
+name: market-crypto-weekly-digest
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '46 11 * * 0'
+
+jobs:
+  crypto-weekly-digest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send crypto weekly digest
+        shell: pwsh
+        env:
+          TELEGRAM_TOKEN:   ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TWELVEDATA_KEY:   ${{ secrets.TWELVEDATA_KEY }}
+        run: |
+          $TZ  = [System.TimeZoneInfo]::FindSystemTimeZoneById('Europe/Stockholm')
+          $Now = [System.TimeZoneInfo]::ConvertTimeFromUtc([DateTime]::UtcNow, $TZ)
+
+          $Indices = @(
+              @{ Name = "Bitcoin";  Ticker = "BTC/USD"; Market = "CRYPTO"; Own = $true  }
+              @{ Name = "Ethereum"; Ticker = "ETH/USD"; Market = "CRYPTO"; Own = $false }
+              @{ Name = "XRP";      Ticker = "XRP/USD"; Market = "CRYPTO"; Own = $false }
+          )
+
+          function Get-CryptoWeeklyData([string]$Ticker) {
+              # "Last week" = Monday candle open vs Friday candle close
+              $Enc = [Uri]::EscapeDataString($Ticker)
+              $R   = Invoke-RestMethod `
+                         -Uri "https://api.twelvedata.com/time_series?symbol=$Enc&interval=1day&outputsize=10&apikey=$($env:TWELVEDATA_KEY)" `
+                         -ErrorAction Stop
+              if ($R.status -eq "error") { throw "Twelve Data: $($R.message)" }
+              $MondayRow  = $R.values | Where-Object { [DateTime]::Parse($_.datetime).DayOfWeek -eq 'Monday' } | Select-Object -First 1
+              $FridayRow  = $R.values | Where-Object { [DateTime]::Parse($_.datetime).DayOfWeek -eq 'Friday' } | Select-Object -First 1
+              if (-not $MondayRow) { throw "No Monday candle found for $Ticker" }
+              if (-not $FridayRow) { throw "No Friday candle found for $Ticker" }
+              $MondayOpen  = [double]$MondayRow.open
+              $FridayClose = [double]$FridayRow.close
+              $WeekPct     = if ($MondayOpen -eq 0) { $null } else { [math]::Round(($FridayClose - $MondayOpen) / $MondayOpen * 100, 2) }
+              [PSCustomObject]@{
+                  Close   = [math]::Round($FridayClose, 2)
+                  WeekPct = $WeekPct
+              }
+          }
+
+          function Fmt([object]$v) {
+              if ($null -eq $v) { return "N/A" }
+              "$(if ($v -ge 0) { '🟢 +' } else { '🔴 ' })$v%"
+          }
+
+          $LastFriday = $Now.AddDays(-2).ToString('yyyy-MM-dd')
+
+          $lines = @(
+              "<b>Weekly Crypto Market Digest 📊</b>"
+              "Week ending Friday $LastFriday"
+              "<i>Last week's movement</i>"
+              ""
+          )
+
+          $Results = @()
+          foreach ($idx in $Indices) {
+              $Flag = "💵"
+              try {
+                  $d = Get-CryptoWeeklyData $idx.Ticker
+                  $Results += [PSCustomObject]@{
+                      Name    = $idx.Name
+                      Flag    = $Flag
+                      Close   = $d.Close
+                      WeekPct = $d.WeekPct
+                      Own     = $idx.Own
+                  }
+              } catch {
+                  $Results += [PSCustomObject]@{
+                      Name    = $idx.Name
+                      Flag    = $Flag
+                      Close   = $null
+                      WeekPct = $null
+                      Own     = $idx.Own
+                      Error   = $true
+                  }
+              }
+          }
+
+          $Results = $Results | Sort-Object -Property WeekPct -Descending
+
+          foreach ($r in $Results) {
+              $Portfolio = if ($r.Own) { ' 💼' } else { '' }
+              if ($r.Error) {
+                  $lines += "<b>$($r.Flag) $($r.Name)</b>: unavailable ⚠️$Portfolio"
+              } else {
+                  $lines += "<b>$($r.Flag) $($r.Name)</b>: $($r.Close) $(Fmt $r.WeekPct)$Portfolio"
+              }
+          }
+
+          $body = @{
+              chat_id    = $env:TELEGRAM_CHAT_ID
+              text       = ($lines -join "`n")
+              parse_mode = "HTML"
+          } | ConvertTo-Json -Depth 3
+
+          Invoke-RestMethod -Uri "https://api.telegram.org/bot$($env:TELEGRAM_TOKEN)/sendMessage" `
+              -Method Post -Body $body -ContentType "application/json; charset=utf-8"
+          Write-Host "Crypto weekly digest sent."

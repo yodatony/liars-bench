@@ -27,7 +27,7 @@ jobs:
               @{ Name = "SAAB B";          Ticker = "SAAB-B.ST"; Market = "SE"; Own = $false }
               @{ Name = "Swedbank A";      Ticker = "SWED-A.ST"; Market = "SE"; Own = $false }
               @{ Name = "Handelsbanken A"; Ticker = "SHB-A.ST";  Market = "SE"; Own = $false }
-              @{ Name = "SBB Norden B";   Ticker = "SBB-B.ST";  Market = "SE"; Own = $false }
+              @{ Name = "SBB Norden B";    Ticker = "SBB-B.ST";  Market = "SE"; Own = $false }
               @{ Name = "SSAB B";          Ticker = "SSAB-B.ST"; Market = "SE"; Own = $false }
               @{ Name = "Novo Nordisk B";  Ticker = "NOVO-B.CO"; Market = "DK"; Own = $true  }
               @{ Name = "NVIDIA";          Ticker = "NVDA";      Market = "US"; Own = $false }
@@ -36,7 +36,6 @@ jobs:
               @{ Name = "Amazon";          Ticker = "AMZN";      Market = "US"; Own = $false }
               @{ Name = "Google A";        Ticker = "GOOGL";     Market = "US"; Own = $false }
               @{ Name = "Tesla";           Ticker = "TSLA";      Market = "US"; Own = $false }
-              @{ Name = "Bitcoin";         Ticker = "BTC/USD";   Market = "CRYPTO"; Own = $false }
           )
 
           function Get-WeeklyData([string]$Ticker) {
@@ -83,26 +82,6 @@ jobs:
               }
           }
 
-          function Get-CryptoWeeklyData([string]$Ticker) {
-              # "Last week" = Monday candle open vs Friday candle close
-              $Enc = [Uri]::EscapeDataString($Ticker)
-              $R   = Invoke-RestMethod `
-                         -Uri "https://api.twelvedata.com/time_series?symbol=$Enc&interval=1day&outputsize=10&apikey=$($env:TWELVEDATA_KEY)" `
-                         -ErrorAction Stop
-              if ($R.status -eq "error") { throw "Twelve Data: $($R.message)" }
-              $MondayRow  = $R.values | Where-Object { [DateTime]::Parse($_.datetime).DayOfWeek -eq 'Monday' } | Select-Object -First 1
-              $FridayRow  = $R.values | Where-Object { [DateTime]::Parse($_.datetime).DayOfWeek -eq 'Friday' } | Select-Object -First 1
-              if (-not $MondayRow) { throw "No Monday candle found for $Ticker" }
-              if (-not $FridayRow) { throw "No Friday candle found for $Ticker" }
-              $MondayOpen  = [double]$MondayRow.open
-              $FridayClose = [double]$FridayRow.close
-              $WeekPct     = if ($MondayOpen -eq 0) { $null } else { [math]::Round(($FridayClose - $MondayOpen) / $MondayOpen * 100, 2) }
-              [PSCustomObject]@{
-                  Close   = [math]::Round($FridayClose, 2)
-                  WeekPct = $WeekPct
-              }
-          }
-
           function Fmt([object]$v) {
               if ($null -eq $v) { return "N/A" }
               "$(if ($v -ge 0) { '🟢 +' } else { '🔴 ' })$v%"
@@ -123,13 +102,11 @@ jobs:
                   "SE"     { "🇸🇪" }
                   "DK"     { "🇩🇰" }
                   "US"     { "🇺🇸" }
-                  "CRYPTO" { "💵" }
                   default  { $idx.Market }
               }
               try {
                   $d = switch ($idx.Market) {
                       { $_ -in @("SE","DK") } { Get-SeWeeklyData $idx.Ticker }
-                      "CRYPTO"               { Get-CryptoWeeklyData $idx.Ticker }
                       default                { Get-WeeklyData $idx.Ticker }
                   }
                   $Results += [PSCustomObject]@{
