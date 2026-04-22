@@ -18,7 +18,9 @@ jobs:
           $Now = [System.TimeZoneInfo]::ConvertTimeFromUtc([DateTime]::UtcNow, $TZ)
 
           $Indices = @(
-              @{ Name = "Bitcoin"; Ticker = "BTC/USD"; Market = "CRYPTO"; Own = $true }
+              @{ Name = "Bitcoin";  Ticker = "BTC/USD"; Market = "CRYPTO"; Own = $true }
+              @{ Name = "Ethereum"; Ticker = "ETH/USD"; Market = "CRYPTO"; Own = $false }
+              @{ Name = "XRP";      Ticker = "XRP/USD"; Market = "CRYPTO"; Own = $false }
           )
 
           function Get-IndexData([string]$Ticker) {
