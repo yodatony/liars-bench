@@ -1,0 +1,108 @@
+name: market-crypto-1d-update
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '44 3 * * *'
+
+jobs:
+  crypto-1d-update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send crypto daily update
+        shell: pwsh
+        env:
+          TELEGRAM_TOKEN:   ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TWELVEDATA_KEY:   ${{ secrets.TWELVEDATA_KEY }}
+        run: |
+          $TZ  = [System.TimeZoneInfo]::FindSystemTimeZoneById('Europe/Stockholm')
+          $Now = [System.TimeZoneInfo]::ConvertTimeFromUtc([DateTime]::UtcNow, $TZ)
+
+          $Indices = @(
+              @{ Name = "Bitcoin";  Ticker = "BTC/USD"; Market = "CRYPTO"; Own = $true  }
+              @{ Name = "Ethereum"; Ticker = "ETH/USD"; Market = "CRYPTO"; Own = $false }
+              @{ Name = "XRP";      Ticker = "XRP/USD"; Market = "CRYPTO"; Own = $false }
+          )
+
+          function Get-CryptoData([string]$Ticker) {
+              $Enc = [Uri]::EscapeDataString($Ticker)
+              $R   = Invoke-RestMethod `
+                         -Uri "https://api.twelvedata.com/time_series?symbol=$Enc&interval=1day&outputsize=3&apikey=$($env:TWELVEDATA_KEY)" `
+                         -ErrorAction Stop
+              if ($R.status -eq "error") { throw "Twelve Data: $($R.message)" }
+              $Rows = @($R.values | ForEach-Object {
+                  [PSCustomObject]@{ date = $_.datetime; close = [double]$_.close }
+              })
+              if ($Rows.Count -lt 2) { throw "Not enough data for $Ticker" }
+              # $Rows[0] = today partial, $Rows[1] = yesterday full, $Rows[2] = day before
+              $YestClose = $Rows[1].close
+              $PrevClose = $Rows[2].close
+              [PSCustomObject]@{
+                  Close  = [math]::Round($YestClose, 2)
+                  DayPct = [math]::Round(($YestClose - $PrevClose) / $PrevClose * 100, 2)
+                  Date   = $Rows[1].date.Substring(0, 10)
+              }
+          }
+
+          function Fmt([object]$v) {
+              if ($null -eq $v) { return "N/A" }
+              "$(if ($v -ge 0) { '🟢 +' } else { '🔴 ' })$v%"
+          }
+
+          $Results = @()
+          foreach ($idx in $Indices) {
+              $Flag = switch ($idx.Market) {
+                  "CRYPTO" { "💵" }
+                  default  { $idx.Market }
+              }
+              try {
+                  $d = Get-CryptoData $idx.Ticker
+                  $Results += [PSCustomObject]@{
+                      Name   = $idx.Name
+                      Flag   = $Flag
+                      Close  = $d.Close
+                      DayPct = $d.DayPct
+                      Date   = $d.Date
+                      Own    = $idx.Own
+                  }
+              } catch {
+                  $Results += [PSCustomObject]@{
+                      Name   = $idx.Name
+                      Flag   = $Flag
+                      Close  = $null
+                      DayPct = $null
+                      Own    = $idx.Own
+                      Error  = $true
+                  }
+              }
+          }
+
+          $Results = $Results | Sort-Object -Property DayPct -Descending
+          $Yesterday = ($Results | Where-Object { $_.Date } | Select-Object -First 1).Date
+
+          $lines = @(
+              "<b>Crypto Market Daily Update 📈</b>"
+              "Yesterday: $Yesterday"
+              "<i>Previous day movement (UTC)</i>"
+              ""
+          )
+
+          foreach ($r in $Results) {
+              $Portfolio = if ($r.Own) { ' 💼' } else { '' }
+              if ($r.Error) {
+                  $lines += "<b>$($r.Flag) $($r.Name)</b>: unavailable ⚠️$Portfolio"
+              } else {
+                  $lines += "<b>$($r.Flag) $($r.Name)</b>: $($r.Close) $(Fmt $r.DayPct)$Portfolio"
+              }
+          }
+
+          $body = @{
+              chat_id    = $env:TELEGRAM_CHAT_ID
+              text       = ($lines -join "`n")
+              parse_mode = "HTML"
+          } | ConvertTo-Json -Depth 3
+
+          Invoke-RestMethod -Uri "https://api.telegram.org/bot$($env:TELEGRAM_TOKEN)/sendMessage" `
+              -Method Post -Body $body -ContentType "application/json; charset=utf-8"
+          Write-Host "Crypto daily update sent."
