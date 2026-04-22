@@ -1,4 +1,4 @@
-name: market-hourly-update
+name: market-us-hourly-update
 
 on:
   workflow_dispatch: # Triggered externally on schedule via cron-job.org
@@ -108,7 +108,7 @@ jobs:
               $lines += Get-Lines $Indices
           }
           else {
-              $lines += "<b>US Market Update 📈</b>"
+              $lines += "<b>US Market Hourly Update 📈</b>"
               $lines += "$($Now.ToString('yyyy-MM-dd HH:mm')) CET"
               $lines += "<i>$usStatus</i>"
               $lines += ""

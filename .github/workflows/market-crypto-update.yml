@@ -1,4 +1,4 @@
-name: market-crypto-update
+name: market-crypto-hourly-update
 
 on:
   workflow_dispatch: # Triggered externally on schedule via cron-job.org
@@ -61,7 +61,7 @@ jobs:
           }
 
           $lines = @(
-              "<b>Crypto Market Update 📈</b>"
+              "<b>Crypto Market Hourly Update 📈</b>"
               "$($Now.ToString('yyyy-MM-dd HH:mm')) CET"
               "<i>Open 24/7 🔔</i>"
               ""
