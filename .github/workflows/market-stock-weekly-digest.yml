@@ -3,7 +3,7 @@ name: market-stock-weekly-digest
 on:
   workflow_dispatch:
   schedule:
-    - cron: '53 11 * * 0'
+    - cron: '57 10 * * 0'
 
 jobs:
   weekly-digest:
