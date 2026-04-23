@@ -17,9 +17,9 @@ jobs:
           $TZ     = [System.TimeZoneInfo]::FindSystemTimeZoneById('Europe/Stockholm')
           $Now    = [System.TimeZoneInfo]::ConvertTimeFromUtc([DateTime]::UtcNow, $TZ)
           $T      = $Now.Hour * 60 + $Now.Minute
-          $Dow    = $Now.DayOfWeek.ToString()
 
-          $Threshold = 2.0
+          $Threshold  = 2.0
+          $MarketClosed = $T -lt 930 -or $T -ge 1320  # US market open 15:30–22:00 CET
           $Indices = @(
               @{ Name = "NVIDIA";    Ticker = "NVDA";  Market = "US"; Own = $false }
               @{ Name = "Apple";     Ticker = "AAPL";  Market = "US"; Own = $false }
@@ -31,10 +31,6 @@ jobs:
 
           $Alerts = @()
           foreach ($idx in $Indices) {
-              $OutsideHours = ($T -lt 930 -or $T -ge 1330)
-              $IsWeekend    = $Dow -in @('Saturday','Sunday')
-              if ($OutsideHours -or $IsWeekend) { continue }
-
               try {
                   $Enc  = [Uri]::EscapeDataString($idx.Ticker)
                   $R    = Invoke-RestMethod `
@@ -47,7 +43,11 @@ jobs:
                   if ([math]::Abs($Pct) -ge $Threshold) {
                       $Flag      = "🇺🇸"
                       $Portfolio = if ($idx.Own) { ' 💼' } else { '' }
-                      $Arrow     = if ($Pct -ge 0) { "🟢 +$Pct%" } else { "🔴 $Pct%" }
+                      $Arrow     = if ($MarketClosed) {
+                                       if ($Pct -ge 0) { "▲ +$Pct%" } else { "▼ $Pct%" }
+                                   } else {
+                                       if ($Pct -ge 0) { "🟢 +$Pct%" } else { "🔴 $Pct%" }
+                                   }
                       $Alerts   += "<b>$Flag $($idx.Name)</b>: $Price $Arrow$Portfolio"
                   }
               } catch {
@@ -60,7 +60,7 @@ jobs:
           $lines = @(
               "<b>Big Move Alert ⚠️</b>"
               "$($Now.ToString('yyyy-MM-dd HH:mm')) CET"
-              "<i>Intraday move >2% from previous close</i>"
+              "<i>Intraday move >2% - $(if ($MarketClosed) { 'Closed 🔕' } else { 'Open 🔔' })</i>"
               ""
           ) + $Alerts
 
