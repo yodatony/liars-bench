@@ -45,7 +45,7 @@ jobs:
                   Current  = [math]::Round($Cur, 2)
                   DayPct   = Pct $Rows[1].close
                   WeekPct  = Pct ($N -ge 8 ? $Rows[7].close : $Rows[$N-1].close)
-                  MonthPct = Pct ($N -ge 22 ? $Rows[21].close : $Rows[$N-1].close)
+                  MonthPct = Pct ($N -ge 31 ? $Rows[30].close : $Rows[$N-1].close)
                   YtdPct   = Pct $YtdClose
               }
           }
