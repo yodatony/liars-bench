@@ -79,7 +79,7 @@ jobs:
           $LastFriday = $Now.AddDays(-2).ToString('yyyy-MM-dd')
 
           $lines = @(
-              "<b>Weekly Index Market Digest📊</b>"
+              "<b>Weekly Index Market Digest 📊</b>"
               "Week ending Friday $LastFriday"
               "<i>This week's movement</i>"
               ""
@@ -116,9 +116,9 @@ jobs:
 
           foreach ($r in $Results) {
               if ($r.Error) {
-                  $lines += "<b>$($r.Flag) $($r.Name)</b>: unavailable ⚠️"
+                  $lines += "<b>$($r.Flag) $($r.Name)</b> — unavailable ⚠️"
               } else {
-                  $lines += "<b>$($r.Flag) $($r.Name)</b>: $($r.Close) $(Fmt $r.WeekPct)"
+                  $lines += "<b>$($r.Flag) $($r.Name)</b> — $($r.Close) $(Fmt $r.WeekPct)"
               }
           }
 
