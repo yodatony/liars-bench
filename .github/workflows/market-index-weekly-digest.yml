@@ -28,10 +28,9 @@ jobs:
           )
 
           function Get-WeeklyData([string]$Ticker) {
-              $Year = $Now.Year.ToString()
               $Enc  = [Uri]::EscapeDataString($Ticker)
               $R    = Invoke-RestMethod `
-                          -Uri "https://api.twelvedata.com/time_series?symbol=$Enc&interval=1day&outputsize=253&apikey=$($env:TWELVEDATA_KEY)" `
+                          -Uri "https://api.twelvedata.com/time_series?symbol=$Enc&interval=1day&outputsize=22&apikey=$($env:TWELVEDATA_KEY)" `
                           -ErrorAction Stop
               if ($R.status -eq "error") { throw "Twelve Data: $($R.message)" }
               $Rows = @($R.values | ForEach-Object {
@@ -40,7 +39,6 @@ jobs:
               $N    = $Rows.Count
               $Last = $Rows[0].close
               $WkAgo = $N -ge 6 ? $Rows[5].close : $Rows[$N-1].close
-              $YtdRow = $Rows | Where-Object { $_.date -like "$Year*" } | Select-Object -Last 1
 
               function Pct($From) {
                   if (-not $From -or $From -eq 0) { return $null }
@@ -51,16 +49,13 @@ jobs:
                   Close    = [math]::Round($Last, 2)
                   WeekPct  = Pct $WkAgo
                   MonthPct = Pct ($N -ge 22 ? $Rows[21].close : $Rows[$N-1].close)
-                  YtdPct   = Pct $YtdRow.close
-                  YearPct  = Pct ($N -ge 252 ? $Rows[251].close : $Rows[$N-1].close)
               }
           }
 
           function Get-SeWeeklyData([string]$Ticker) {
-              $Year = $Now.Year.ToString()
               $Enc  = [Uri]::EscapeDataString($Ticker)
               $Raw  = Invoke-RestMethod `
-                          -Uri "https://eodhd.com/api/eod/$Enc`?api_token=$($env:EODHD_KEY)&fmt=json&order=d&limit=253" `
+                          -Uri "https://eodhd.com/api/eod/$Enc`?api_token=$($env:EODHD_KEY)&fmt=json&order=d&limit=22" `
                           -ErrorAction Stop
               if (-not $Raw -or $Raw.Count -eq 0) { throw "No data returned for $Ticker" }
               $Rows = @($Raw | ForEach-Object {
@@ -69,7 +64,6 @@ jobs:
               $N    = $Rows.Count
               $Last = $Rows[0].close
               $WkAgo = $N -ge 6 ? $Rows[5].close : $Rows[$N-1].close
-              $YtdRow = $Rows | Where-Object { $_.date -like "$Year*" } | Select-Object -Last 1
 
               function Pct($From) {
                   if (-not $From -or $From -eq 0) { return $null }
@@ -80,8 +74,6 @@ jobs:
                   Close    = [math]::Round($Last, 2)
                   WeekPct  = Pct $WkAgo
                   MonthPct = Pct ($N -ge 22 ? $Rows[21].close : $Rows[$N-1].close)
-                  YtdPct   = Pct $YtdRow.close
-                  YearPct  = Pct ($N -ge 252 ? $Rows[251].close : $Rows[$N-1].close)
               }
           }
 
@@ -92,8 +84,7 @@ jobs:
 
           function FmtFlat([object]$v) {
               if ($null -eq $v) { return "N/A" }
-              $r = [int][math]::Round($v, 0)
-              "$(if ($r -ge 0) { '+' })$r%"
+              "$(if ($v -ge 0) { '+' })$v%"
           }
 
           $LastFriday = $Now.AddDays(-2).ToString('yyyy-MM-dd')
@@ -121,8 +112,6 @@ jobs:
                       Close    = $d.Close
                       WeekPct  = $d.WeekPct
                       MonthPct = $d.MonthPct
-                      YtdPct   = $d.YtdPct
-                      YearPct  = $d.YearPct
                   }
               } catch {
                   $Results += [PSCustomObject]@{
@@ -131,8 +120,6 @@ jobs:
                       Close    = $null
                       WeekPct  = $null
                       MonthPct = $null
-                      YtdPct   = $null
-                      YearPct  = $null
                       Error    = $true
                   }
               }
@@ -145,7 +132,7 @@ jobs:
                   $lines += "<b>$($r.Flag) $($r.Name)</b> — unavailable ⚠️"
               } else {
                   $lines += "<b>$($r.Flag) $($r.Name)</b> — $($r.Close) $(Fmt $r.WeekPct)"
-                  $lines += "1M~$(FmtFlat $r.MonthPct)|YTD~$(FmtFlat $r.YtdPct)|1Y~$(FmtFlat $r.YearPct)"
+                  $lines += "1M: ~$(FmtFlat $r.MonthPct)"
               }
           }
 
