@@ -27,36 +27,23 @@ jobs:
 
           function Get-CryptoWeeklyData([string]$Ticker) {
               # Monday open vs real-time latest price
-              $Year = $Now.Year.ToString()
-              $Enc  = [Uri]::EscapeDataString($Ticker)
-              $R    = Invoke-RestMethod `
-                          -Uri "https://api.twelvedata.com/time_series?symbol=$Enc&interval=1day&outputsize=365&apikey=$($env:TWELVEDATA_KEY)" `
-                          -ErrorAction Stop
+              $Enc = [Uri]::EscapeDataString($Ticker)
+              $R   = Invoke-RestMethod `
+                         -Uri "https://api.twelvedata.com/time_series?symbol=$Enc&interval=1day&outputsize=10&apikey=$($env:TWELVEDATA_KEY)" `
+                         -ErrorAction Stop
               if ($R.status -eq "error") { throw "Twelve Data: $($R.message)" }
-              $Rows = @($R.values | ForEach-Object {
-                  [PSCustomObject]@{ date = $_.datetime; open = [double]$_.open; close = [double]$_.close }
-              })
-              $N = $Rows.Count
-              if ($N -eq 0) { throw "No data returned for $Ticker" }
-              $MondayRow = $Rows | Where-Object { [DateTime]::Parse($_.date).DayOfWeek -eq 'Monday' } | Select-Object -First 1
+              $MondayRow = $R.values | Where-Object { [DateTime]::Parse($_.datetime).DayOfWeek -eq 'Monday' } | Select-Object -First 1
               if (-not $MondayRow) { throw "No Monday candle found for $Ticker" }
-              $MondayOpen = $MondayRow.open
+              $MondayOpen = [double]$MondayRow.open
               $PriceR = Invoke-RestMethod `
                             -Uri "https://api.twelvedata.com/price?symbol=$Enc&apikey=$($env:TWELVEDATA_KEY)" `
                             -ErrorAction Stop
               if ($PriceR.status -eq "error") { throw "Twelve Data price: $($PriceR.message)" }
               $LatestPrice = [double]$PriceR.price
-              function Pct($From) {
-                  if (-not $From -or $From -eq 0) { return $null }
-                  [math]::Round(($LatestPrice - $From) / $From * 100, 2)
-              }
-              $YtdRow  = $Rows | Where-Object { $_.date -like "$Year*" } | Select-Object -Last 1
+              $WeekPct     = if ($MondayOpen -eq 0) { $null } else { [math]::Round(($LatestPrice - $MondayOpen) / $MondayOpen * 100, 2) }
               [PSCustomObject]@{
-                  Close    = [math]::Round($LatestPrice, 2)
-                  WeekPct  = Pct $MondayOpen
-                  MonthPct = Pct ($N -ge 32 ? $Rows[31].close : $Rows[$N-1].close)
-                  YtdPct   = Pct $YtdRow.close
-                  YearPct  = Pct ($N -ge 365 ? $Rows[364].close : $Rows[$N-1].close)
+                  Close   = [math]::Round($LatestPrice, 2)
+                  WeekPct = $WeekPct
               }
           }
 
@@ -78,26 +65,20 @@ jobs:
               try {
                   $d = Get-CryptoWeeklyData $idx.Ticker
                   $Results += [PSCustomObject]@{
-                      Name     = $idx.Name
-                      Flag     = $Flag
-                      Close    = $d.Close
-                      WeekPct  = $d.WeekPct
-                      MonthPct = $d.MonthPct
-                      YtdPct   = $d.YtdPct
-                      YearPct  = $d.YearPct
-                      Own      = $idx.Own
+                      Name    = $idx.Name
+                      Flag    = $Flag
+                      Close   = $d.Close
+                      WeekPct = $d.WeekPct
+                      Own     = $idx.Own
                   }
               } catch {
                   $Results += [PSCustomObject]@{
-                      Name     = $idx.Name
-                      Flag     = $Flag
-                      Close    = $null
-                      WeekPct  = $null
-                      MonthPct = $null
-                      YtdPct   = $null
-                      YearPct  = $null
-                      Own      = $idx.Own
-                      Error    = $true
+                      Name    = $idx.Name
+                      Flag    = $Flag
+                      Close   = $null
+                      WeekPct = $null
+                      Own     = $idx.Own
+                      Error   = $true
                   }
               }
           }
@@ -109,9 +90,7 @@ jobs:
               if ($r.Error) {
                   $lines += "<b>$($r.Flag) $($r.Name)</b>: unavailable ⚠️$Portfolio"
               } else {
-                  $lines += "<b>$($r.Flag) $($r.Name)</b> — $($r.Close)$Portfolio"
-                  $lines += "1W: $(Fmt $r.WeekPct) | 1M: $(Fmt $r.MonthPct)"
-                  $lines += "YTD: $(Fmt $r.YtdPct) | 1Y: $(Fmt $r.YearPct)"
+                  $lines += "<b>$($r.Flag) $($r.Name)</b> — $($r.Close) $(Fmt $r.WeekPct)$Portfolio"
               }
           }
 
