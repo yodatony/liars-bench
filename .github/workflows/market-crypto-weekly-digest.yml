@@ -54,7 +54,7 @@ jobs:
               [PSCustomObject]@{
                   Close    = [math]::Round($LatestPrice, 2)
                   WeekPct  = Pct $MondayOpen
-                  MonthPct = Pct ($N -ge 31 ? $Rows[30].close : $Rows[$N-1].close)
+                  MonthPct = Pct ($N -ge 32 ? $Rows[31].close : $Rows[$N-1].close)
                   YtdPct   = Pct $YtdRow.close
                   YearPct  = Pct ($N -ge 365 ? $Rows[364].close : $Rows[$N-1].close)
               }
