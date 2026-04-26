@@ -64,7 +64,7 @@ jobs:
               try {
                   $d = Get-Se1dData $idx.Ticker
                   $Results += [PSCustomObject]@{
-                      Name   = $idx.Name
+                      Name   = $idx.Ticker
                       Flag   = $Flag
                       Close  = $d.Close
                       DayPct = $d.DayPct
@@ -73,7 +73,7 @@ jobs:
                   }
               } catch {
                   $Results += [PSCustomObject]@{
-                      Name   = $idx.Name
+                      Name   = $idx.Ticker
                       Flag   = $Flag
                       Close  = $null
                       DayPct = $null

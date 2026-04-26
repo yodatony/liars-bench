@@ -116,7 +116,7 @@ jobs:
               try {
                   $d = if ($idx.Market -eq "SE") { Get-SeWeeklyData $idx.Ticker } else { Get-WeeklyData $idx.Ticker }
                   $Results += [PSCustomObject]@{
-                      Name     = $idx.Name
+                      Name     = $idx.Ticker
                       Flag     = $Flag
                       Close    = $d.Close
                       WeekPct  = $d.WeekPct
@@ -126,7 +126,7 @@ jobs:
                   }
               } catch {
                   $Results += [PSCustomObject]@{
-                      Name     = $idx.Name
+                      Name     = $idx.Ticker
                       Flag     = $Flag
                       Close    = $null
                       WeekPct  = $null

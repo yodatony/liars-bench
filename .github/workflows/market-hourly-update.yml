@@ -80,9 +80,9 @@ jobs:
                   try {
                       $d         = Get-IndexData $idx.Ticker $idx.Market
                       $Portfolio = if ($idx.Own) { ' 💼' } else { '' }
-                      $out   += "<b>$($idx.Name)</b> — $($d.Current) $(if ($UsMarketOpen) { Fmt $d.DayPct } else { FmtArrow $d.DayPct })$Portfolio"
+                      $out   += "<b>$($idx.Ticker)</b> — $($d.Current) $(if ($UsMarketOpen) { Fmt $d.DayPct } else { FmtArrow $d.DayPct })$Portfolio"
                   } catch {
-                      $out   += "<b>$($idx.Name)</b> — unavailable ⚠️"
+                      $out   += "<b>$($idx.Ticker)</b> — unavailable ⚠️"
                       $out   += "<i>Error: $($_.Exception.Message)</i>"
                   }
               }

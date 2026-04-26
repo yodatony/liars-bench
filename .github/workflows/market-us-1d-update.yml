@@ -57,7 +57,7 @@ jobs:
               try {
                   $d = Get-Us1dData $idx.Ticker
                   $Results += [PSCustomObject]@{
-                      Name   = $idx.Name
+                      Name   = $idx.Ticker
                       Flag   = $Flag
                       Close  = $d.Close
                       DayPct = $d.DayPct
@@ -66,7 +66,7 @@ jobs:
                   }
               } catch {
                   $Results += [PSCustomObject]@{
-                      Name   = $idx.Name
+                      Name   = $idx.Ticker
                       Flag   = $Flag
                       Close  = $null
                       DayPct = $null
