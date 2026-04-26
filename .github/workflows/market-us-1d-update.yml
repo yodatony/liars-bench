@@ -1,34 +1,135 @@
-name: market-us-1d-update
+name: market-stock-1d-update
 
 on:
   workflow_dispatch:
   schedule:
-    - cron: '54 3 * * 2-6'  
+    - cron: '54 3 * * 2-6'
 
 jobs:
-  us-1d-update:
+  stock-1d-update:
     runs-on: ubuntu-latest
     steps:
-      - name: Send US daily update
+      - name: Send stock daily update
         shell: pwsh
         env:
           TELEGRAM_TOKEN:   ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          EODHD_KEY:        ${{ secrets.EODHD_KEY }}
           TWELVEDATA_KEY:   ${{ secrets.TWELVEDATA_KEY }}
         run: |
           $TZ  = [System.TimeZoneInfo]::FindSystemTimeZoneById('Europe/Stockholm')
           $Now = [System.TimeZoneInfo]::ConvertTimeFromUtc([DateTime]::UtcNow, $TZ)
 
           $Indices = @(
-              @{ Name = "NVDA";             Ticker = "NVDA";  Market = "US"; Own = $false }
-              @{ Name = "AAPL";             Ticker = "AAPL";  Market = "US"; Own = $false }
-              @{ Name = "MSFT";             Ticker = "MSFT";  Market = "US"; Own = $true  }
-              @{ Name = "AMZN";             Ticker = "AMZN";  Market = "US"; Own = $false }
-              @{ Name = "GOOGL";            Ticker = "GOOGL"; Market = "US"; Own = $false }
-              @{ Name = "TSLA";             Ticker = "TSLA";  Market = "US"; Own = $false }
-              @{ Name = "S&P 500 (ETF)";    Ticker = "SPY";   Market = "US"; Own = $false }
-              @{ Name = "DJI (ETF)";        Ticker = "DIA";   Market = "US"; Own = $false }
+              @{ Name = "ATCO B";  Ticker = "ATCO-B.ST";  Market = "SE"; Own = $true  }
+              @{ Name = "INVE B";  Ticker = "INVE-B.ST";  Market = "SE"; Own = $true  }
+              @{ Name = "VOLV B";  Ticker = "VOLV-B.ST";  Market = "SE"; Own = $false }
+              @{ Name = "SAAB B";  Ticker = "SAAB-B.ST";  Market = "SE"; Own = $false }
+              @{ Name = "SWED A";  Ticker = "SWED-A.ST";  Market = "SE"; Own = $false }
+              @{ Name = "SHB A";   Ticker = "SHB-A.ST";   Market = "SE"; Own = $false }
+              @{ Name = "SBB B";   Ticker = "SBB-B.ST";   Market = "SE"; Own = $false }
+              @{ Name = "SSAB B";  Ticker = "SSAB-B.ST";  Market = "SE"; Own = $false }
+              @{ Name = "Novo B";  Ticker = "NOVO-B.CO";  Market = "DK"; Own = $true  }
+              @{ Name = "NVDA";    Ticker = "NVDA";       Market = "US"; Own = $false }
+              @{ Name = "AAPL";    Ticker = "AAPL";       Market = "US"; Own = $false }
+              @{ Name = "MSFT";    Ticker = "MSFT";       Market = "US"; Own = $true  }
+              @{ Name = "AMZN";    Ticker = "AMZN";       Market = "US"; Own = $false }
+              @{ Name = "GOOGL";   Ticker = "GOOGL";      Market = "US"; Own = $false }
+              @{ Name = "TSLA";    Ticker = "TSLA";       Market = "US"; Own = $false }
           )
+
+          function Get-EodData([string]$Ticker) {
+              $Enc = [Uri]::EscapeDataString($Ticker)
+              $Raw = Invoke-RestMethod `
+                         -Uri "https://eodhd.com/api/eod/$Enc`?api_token=$($env:EODHD_KEY)&fmt=json&order=d&limit=3" `
+                         -ErrorAction Stop
+              if (-not $Raw -or $Raw.Count -lt 2) { throw "Not enough data for $Ticker" }
+              $YestClose = [double]$Raw[0].close
+              $PrevClose = [double]$Raw[1].close
+              $DayPct    = if ($PrevClose -eq 0) { $null } else { [math]::Round(($YestClose - $PrevClose) / $PrevClose * 100, 2) }
+              [PSCustomObject]@{
+                  Close  = [math]::Round($YestClose, 2)
+                  DayPct = $DayPct
+                  Date   = $Raw[0].date
+              }
+          }
+
+          function Get-TwelveData([string]$Ticker) {
+              $Enc = [Uri]::EscapeDataString($Ticker)
+              $R   = Invoke-RestMethod `
+                         -Uri "https://api.twelvedata.com/quote?symbol=$Enc&apikey=$($env:TWELVEDATA_KEY)" `
+                         -ErrorAction Stop
+              if ($R.status -eq "error") { throw "Twelve Data: $($R.message)" }
+              [PSCustomObject]@{
+                  Close  = [math]::Round([double]$R.close, 2)
+                  DayPct = [math]::Round([double]$R.percent_change, 2)
+                  Date   = $R.datetime.Substring(0, 10)
+              }
+          }
+
+          function Fmt([object]$v) {
+              if ($null -eq $v) { return "N/A" }
+              "$(if ($v -ge 0) { '🟢 +' } else { '🔴 ' })$v%"
+          }
+
+          $Results = @()
+          foreach ($idx in $Indices) {
+              $Flag = switch ($idx.Market) {
+                  "SE"    { "🇸🇪" }
+                  "DK"    { "🇩🇰" }
+                  "US"    { "🇺🇸" }
+                  default { $idx.Market }
+              }
+              try {
+                  $d = if ($idx.Market -in @("SE","DK")) { Get-EodData $idx.Ticker } else { Get-TwelveData $idx.Ticker }
+                  $Results += [PSCustomObject]@{
+                      Name   = $idx.Name
+                      Flag   = $Flag
+                      Close  = $d.Close
+                      DayPct = $d.DayPct
+                      Date   = $d.Date
+                      Own    = $idx.Own
+                  }
+              } catch {
+                  $Results += [PSCustomObject]@{
+                      Name   = $idx.Name
+                      Flag   = $Flag
+                      Close  = $null
+                      DayPct = $null
+                      Own    = $idx.Own
+                      Error  = $true
+                  }
+              }
+          }
+
+          $Results = $Results | Sort-Object -Property DayPct -Descending
+          $Yesterday = ($Results | Where-Object { $_.Date } | Select-Object -First 1).Date
+
+          $lines = @(
+              "<b>Stock Daily Update 📈</b>"
+              "Yesterday: $Yesterday"
+              "<i>Previous trading day movement</i>"
+              ""
+          )
+
+          foreach ($r in $Results) {
+              $Portfolio = if ($r.Own) { ' 💼' } else { '' }
+              if ($r.Error) {
+                  $lines += "<b>$($r.Flag) $($r.Name)</b> — unavailable ⚠️$Portfolio"
+              } else {
+                  $lines += "<b>$($r.Flag) $($r.Name)</b> — $($r.Close) $(Fmt $r.DayPct)$Portfolio"
+              }
+          }
+
+          $body = @{
+              chat_id    = $env:TELEGRAM_CHAT_ID
+              text       = ($lines -join "`n")
+              parse_mode = "HTML"
+          } | ConvertTo-Json -Depth 3
+
+          Invoke-RestMethod -Uri "https://api.telegram.org/bot$($env:TELEGRAM_TOKEN)/sendMessage" `
+              -Method Post -Body $body -ContentType "application/json; charset=utf-8"
+          Write-Host "Stock daily update sent."
 
           function Get-Us1dData([string]$Ticker) {
               $Enc = [Uri]::EscapeDataString($Ticker)
@@ -80,7 +181,7 @@ jobs:
           $Yesterday = ($Results | Where-Object { $_.Date } | Select-Object -First 1).Date
 
           $lines = @(
-              "<b>US Market Daily Update 📈</b>"
+              "<b>Stocks Daily Update 📈</b>"
               "Yesterday: $Yesterday"
               "<i>Previous trading day movement</i>"
               ""
