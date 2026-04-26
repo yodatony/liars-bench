@@ -67,7 +67,7 @@ jobs:
           }
 
           $lines = @(
-              "<b>Weekly Crypto Market Digest 📊</b>"
+              "<b>Weekly Crypto Digest 📊</b>"
               "This week's movement"
               "<i>Monday open → latest close</i>"
               ""

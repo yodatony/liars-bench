@@ -82,7 +82,7 @@ jobs:
           $Yesterday = ($Results | Where-Object { $_.Date } | Select-Object -First 1).Date
 
           $lines = @(
-              "<b>Crypto Market Daily Update 📈</b>"
+              "<b>Daily Crypto Update 📈</b>"
               "Yesterday: $Yesterday"
               "<i>Previous day movement (UTC)</i>"
               ""

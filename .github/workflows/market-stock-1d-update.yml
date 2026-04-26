@@ -106,7 +106,7 @@ jobs:
           $Yesterday = ($Results | Where-Object { $_.Date } | Select-Object -First 1).Date
 
           $lines = @(
-              "<b>Stock Daily Update 📈</b>"
+              "<b>Daily Stock Update 📈</b>"
               "Yesterday: $Yesterday"
               "<i>Previous trading day movement</i>"
               ""
@@ -130,78 +130,3 @@ jobs:
           Invoke-RestMethod -Uri "https://api.telegram.org/bot$($env:TELEGRAM_TOKEN)/sendMessage" `
               -Method Post -Body $body -ContentType "application/json; charset=utf-8"
           Write-Host "Stock daily update sent."
-
-          function Get-Us1dData([string]$Ticker) {
-              $Enc = [Uri]::EscapeDataString($Ticker)
-              $R   = Invoke-RestMethod `
-                         -Uri "https://api.twelvedata.com/quote?symbol=$Enc&apikey=$($env:TWELVEDATA_KEY)" `
-                         -ErrorAction Stop
-              if ($R.status -eq "error") { throw "Twelve Data: $($R.message)" }
-              [PSCustomObject]@{
-                  Close  = [math]::Round([double]$R.close, 2)
-                  DayPct = [math]::Round([double]$R.percent_change, 2)
-                  Date   = $R.datetime.Substring(0, 10)
-              }
-          }
-
-          function Fmt([object]$v) {
-              if ($null -eq $v) { return "N/A" }
-              "$(if ($v -ge 0) { '🟢 +' } else { '🔴 ' })$v%"
-          }
-
-          $Results = @()
-          foreach ($idx in $Indices) {
-              $Flag = switch ($idx.Market) {
-                  "US"     { "🇺🇸" }
-                  default  { $idx.Market }
-              }
-              try {
-                  $d = Get-Us1dData $idx.Ticker
-                  $Results += [PSCustomObject]@{
-                      Name   = $idx.Name
-                      Flag   = $Flag
-                      Close  = $d.Close
-                      DayPct = $d.DayPct
-                      Date   = $d.Date
-                      Own    = $idx.Own
-                  }
-              } catch {
-                  $Results += [PSCustomObject]@{
-                      Name   = $idx.Name
-                      Flag   = $Flag
-                      Close  = $null
-                      DayPct = $null
-                      Own    = $idx.Own
-                      Error  = $true
-                  }
-              }
-          }
-
-          $Results = $Results | Sort-Object -Property DayPct -Descending
-          $Yesterday = ($Results | Where-Object { $_.Date } | Select-Object -First 1).Date
-
-          $lines = @(
-              "<b>Stocks Daily Update 📈</b>"
-              "Yesterday: $Yesterday"
-              "<i>Previous trading day movement</i>"
-              ""
-          )
-
-          foreach ($r in $Results) {
-              $Portfolio = if ($r.Own) { ' 💼' } else { '' }
-              if ($r.Error) {
-                  $lines += "<b>$($r.Flag) $($r.Name)</b> — unavailable ⚠️$Portfolio"
-              } else {
-                  $lines += "<b>$($r.Flag) $($r.Name)</b> — $($r.Close) $(Fmt $r.DayPct)$Portfolio"
-              }
-          }
-
-          $body = @{
-              chat_id    = $env:TELEGRAM_CHAT_ID
-              text       = ($lines -join "`n")
-              parse_mode = "HTML"
-          } | ConvertTo-Json -Depth 3
-
-          Invoke-RestMethod -Uri "https://api.telegram.org/bot$($env:TELEGRAM_TOKEN)/sendMessage" `
-              -Method Post -Body $body -ContentType "application/json; charset=utf-8"
-          Write-Host "US daily update sent."
