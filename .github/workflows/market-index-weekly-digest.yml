@@ -31,7 +31,7 @@ jobs:
               $Year = $Now.Year.ToString()
               $Enc  = [Uri]::EscapeDataString($Ticker)
               $R    = Invoke-RestMethod `
-                          -Uri "https://api.twelvedata.com/time_series?symbol=$Enc&interval=1day&outputsize=366&apikey=$($env:TWELVEDATA_KEY)" `
+                          -Uri "https://api.twelvedata.com/time_series?symbol=$Enc&interval=1day&outputsize=253&apikey=$($env:TWELVEDATA_KEY)" `
                           -ErrorAction Stop
               if ($R.status -eq "error") { throw "Twelve Data: $($R.message)" }
               $Rows = @($R.values | ForEach-Object {
@@ -50,9 +50,9 @@ jobs:
               [PSCustomObject]@{
                   Close    = [math]::Round($Last, 2)
                   WeekPct  = Pct $WkAgo
-                  MonthPct = Pct ($N -ge 31 ? $Rows[30].close : $Rows[$N-1].close)
+                  MonthPct = Pct ($N -ge 22 ? $Rows[21].close : $Rows[$N-1].close)
                   YtdPct   = Pct $YtdRow.close
-                  YearPct  = Pct ($N -ge 365 ? $Rows[364].close : $Rows[$N-1].close)
+                  YearPct  = Pct ($N -ge 252 ? $Rows[251].close : $Rows[$N-1].close)
               }
           }
 
@@ -60,7 +60,7 @@ jobs:
               $Year = $Now.Year.ToString()
               $Enc  = [Uri]::EscapeDataString($Ticker)
               $Raw  = Invoke-RestMethod `
-                          -Uri "https://eodhd.com/api/eod/$Enc`?api_token=$($env:EODHD_KEY)&fmt=json&order=d&limit=366" `
+                          -Uri "https://eodhd.com/api/eod/$Enc`?api_token=$($env:EODHD_KEY)&fmt=json&order=d&limit=253" `
                           -ErrorAction Stop
               if (-not $Raw -or $Raw.Count -eq 0) { throw "No data returned for $Ticker" }
               $Rows = @($Raw | ForEach-Object {
@@ -79,9 +79,9 @@ jobs:
               [PSCustomObject]@{
                   Close    = [math]::Round($Last, 2)
                   WeekPct  = Pct $WkAgo
-                  MonthPct = Pct ($N -ge 31 ? $Rows[30].close : $Rows[$N-1].close)
+                  MonthPct = Pct ($N -ge 22 ? $Rows[21].close : $Rows[$N-1].close)
                   YtdPct   = Pct $YtdRow.close
-                  YearPct  = Pct ($N -ge 365 ? $Rows[364].close : $Rows[$N-1].close)
+                  YearPct  = Pct ($N -ge 252 ? $Rows[251].close : $Rows[$N-1].close)
               }
           }
 
