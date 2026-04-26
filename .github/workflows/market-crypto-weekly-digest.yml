@@ -56,7 +56,7 @@ jobs:
                   WeekPct  = Pct $MondayOpen
                   MonthPct = Pct ($N -ge 31 ? $Rows[30].close : $Rows[$N-1].close)
                   YtdPct   = Pct $YtdRow.close
-                  YearPct  = Pct ($N -ge 365 ? $Rows[364].close : $Rows[$N-1].close)
+                  YearPct  = Pct ($N -ge 366 ? $Rows[365].close : $Rows[$N-1].close)
               }
           }
 
