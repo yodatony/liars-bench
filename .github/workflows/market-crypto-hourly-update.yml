@@ -71,7 +71,7 @@ jobs:
               try {
                   $d         = Get-IndexData $idx.Ticker
                   $Portfolio = if ($idx.Own) { ' 💼' } else { '' }
-                  $lines += "<b>$($idx.Name)</b>— $($d.Current) $(Fmt $d.DayPct)$Portfolio"
+                  $lines += "<b>$($idx.Name)</b> — $($d.Current) $(Fmt $d.DayPct)$Portfolio"
               } catch {
                   $lines += "<b>$($idx.Name)</b> — unavailable ⚠️"
                   $lines += "  <i>Error: $($_.Exception.Message)</i>"
