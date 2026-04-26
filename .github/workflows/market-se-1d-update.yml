@@ -23,8 +23,8 @@ jobs:
           $Indices = @(
               @{ Name = "OMXSPI";     Ticker = "OMXSPI.INDX"; Market = "SE" }
               @{ Name = "OMXS30";     Ticker = "OMXS30.INDX"; Market = "SE" }
-              @{ Name = "S&P 500";    Ticker = "SPY";         Market = "US" }
-              @{ Name = "DJI";        Ticker = "DIA";         Market = "US" }
+              @{ Name = "S&P 500 (ETF)";    Ticker = "SPY";         Market = "US" }
+              @{ Name = "DJI (ETF)";        Ticker = "DIA";         Market = "US" }
           )
 
           function Get-EodData([string]$Ticker) {
