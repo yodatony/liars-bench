@@ -20,14 +20,14 @@ jobs:
           $Now = [System.TimeZoneInfo]::ConvertTimeFromUtc([DateTime]::UtcNow, $TZ)
 
           $Indices = @(
-              @{ Name = "NVIDIA";        Ticker = "NVDA";  Market = "US"; Own = $false }
-              @{ Name = "Apple";         Ticker = "AAPL";  Market = "US"; Own = $false }
-              @{ Name = "Microsoft";     Ticker = "MSFT";  Market = "US"; Own = $true  }
-              @{ Name = "Amazon";        Ticker = "AMZN";  Market = "US"; Own = $false }
-              @{ Name = "Google A";      Ticker = "GOOGL"; Market = "US"; Own = $false }
-              @{ Name = "Tesla";         Ticker = "TSLA";  Market = "US"; Own = $false }
-              @{ Name = "S&P 500 (ETF)"; Ticker = "SPY";   Market = "US"; Own = $false }
-              @{ Name = "DJI (ETF)";     Ticker = "DIA";   Market = "US"; Own = $false }
+              @{ Name = "NVDA";             Ticker = "NVDA";  Market = "US"; Own = $false }
+              @{ Name = "AAPL";             Ticker = "AAPL";  Market = "US"; Own = $false }
+              @{ Name = "MSFT";             Ticker = "MSFT";  Market = "US"; Own = $true  }
+              @{ Name = "AMZN";             Ticker = "AMZN";  Market = "US"; Own = $false }
+              @{ Name = "GOOGL";            Ticker = "GOOGL"; Market = "US"; Own = $false }
+              @{ Name = "TSLA";             Ticker = "TSLA";  Market = "US"; Own = $false }
+              @{ Name = "S&P 500 (ETF)";    Ticker = "SPY";   Market = "US"; Own = $false }
+              @{ Name = "DJI (ETF)";        Ticker = "DIA";   Market = "US"; Own = $false }
           )
 
           function Get-Us1dData([string]$Ticker) {
@@ -57,7 +57,7 @@ jobs:
               try {
                   $d = Get-Us1dData $idx.Ticker
                   $Results += [PSCustomObject]@{
-                      Name   = $idx.Ticker
+                      Name   = $idx.Name
                       Flag   = $Flag
                       Close  = $d.Close
                       DayPct = $d.DayPct
@@ -66,7 +66,7 @@ jobs:
                   }
               } catch {
                   $Results += [PSCustomObject]@{
-                      Name   = $idx.Ticker
+                      Name   = $idx.Name
                       Flag   = $Flag
                       Close  = $null
                       DayPct = $null
@@ -89,9 +89,9 @@ jobs:
           foreach ($r in $Results) {
               $Portfolio = if ($r.Own) { ' 💼' } else { '' }
               if ($r.Error) {
-                  $lines += "<b>$($r.Flag) <code>$($r.Name)</code></b> — unavailable ⚠️$Portfolio"
+                  $lines += "<b>$($r.Flag) $($r.Name)</b> — unavailable ⚠️$Portfolio"
               } else {
-                  $lines += "<b>$($r.Flag) <code>$($r.Name)</code></b> — $($r.Close) $(Fmt $r.DayPct)$Portfolio"
+                  $lines += "<b>$($r.Flag) $($r.Name)</b> — $($r.Close) $(Fmt $r.DayPct)$Portfolio"
               }
           }
 

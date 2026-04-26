@@ -20,9 +20,9 @@ jobs:
           $Now = [System.TimeZoneInfo]::ConvertTimeFromUtc([DateTime]::UtcNow, $TZ)
 
           $Indices = @(
-              @{ Name = "Bitcoin";  Ticker = "BTC/USD"; Market = "CRYPTO"; Own = $true  }
-              @{ Name = "Ethereum"; Ticker = "ETH/USD"; Market = "CRYPTO"; Own = $false }
-              @{ Name = "XRP";      Ticker = "XRP/USD"; Market = "CRYPTO"; Own = $false }
+              @{ Name = "BTC/USD";  Ticker = "BTC/USD"; Market = "CRYPTO"; Own = $true  }
+              @{ Name = "ETH/USD";  Ticker = "ETH/USD"; Market = "CRYPTO"; Own = $false }
+              @{ Name = "XRP/USD";  Ticker = "XRP/USD"; Market = "CRYPTO"; Own = $false }
           )
 
           function Get-CryptoWeeklyData([string]$Ticker) {
@@ -79,7 +79,7 @@ jobs:
               try {
                   $d = Get-CryptoWeeklyData $idx.Ticker
                   $Results += [PSCustomObject]@{
-                      Name     = $idx.Ticker
+                      Name     = $idx.Name
                       Flag     = $Flag
                       Close    = $d.Close
                       WeekPct  = $d.WeekPct
@@ -88,7 +88,7 @@ jobs:
                   }
               } catch {
                   $Results += [PSCustomObject]@{
-                      Name     = $idx.Ticker
+                      Name     = $idx.Name
                       Flag     = $Flag
                       Close    = $null
                       WeekPct  = $null
@@ -104,9 +104,9 @@ jobs:
           foreach ($r in $Results) {
               $Portfolio = if ($r.Own) { ' 💼' } else { '' }
               if ($r.Error) {
-                  $lines += "<b>$($r.Flag) <code>$($r.Name)</code></b> — unavailable ⚠️$Portfolio"
+                  $lines += "<b>$($r.Flag) $($r.Name)</b> — unavailable ⚠️$Portfolio"
               } else {
-                  $lines += "<b>$($r.Flag) <code>$($r.Name)</code></b> — $($r.Close) $(Fmt $r.WeekPct)$Portfolio"
+                  $lines += "<b>$($r.Flag) $($r.Name)</b> — $($r.Close) $(Fmt $r.WeekPct)$Portfolio"
                   $lines += "1M: $(FmtFlat $r.MonthPct)"
               }
           }

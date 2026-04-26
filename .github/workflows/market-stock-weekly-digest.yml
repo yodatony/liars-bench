@@ -21,21 +21,21 @@ jobs:
           $Now = [System.TimeZoneInfo]::ConvertTimeFromUtc([DateTime]::UtcNow, $TZ)
 
           $Indices = @(
-              @{ Name = "Atlas Copco B";   Ticker = "ATCO-B.ST"; Market = "SE"; Own = $true  }
-              @{ Name = "Investor B";      Ticker = "INVE-B.ST"; Market = "SE"; Own = $true  }
-              @{ Name = "Volvo B";         Ticker = "VOLV-B.ST"; Market = "SE"; Own = $false }
-              @{ Name = "SAAB B";          Ticker = "SAAB-B.ST"; Market = "SE"; Own = $false }
-              @{ Name = "Swedbank A";      Ticker = "SWED-A.ST"; Market = "SE"; Own = $false }
-              @{ Name = "Handelsbanken A"; Ticker = "SHB-A.ST";  Market = "SE"; Own = $false }
-              @{ Name = "SBB Norden B";    Ticker = "SBB-B.ST";  Market = "SE"; Own = $false }
-              @{ Name = "SSAB B";          Ticker = "SSAB-B.ST"; Market = "SE"; Own = $false }
-              @{ Name = "Novo Nordisk B";  Ticker = "NOVO-B.CO"; Market = "DK"; Own = $true  }
-              @{ Name = "NVIDIA";          Ticker = "NVDA";      Market = "US"; Own = $false }
-              @{ Name = "Apple";           Ticker = "AAPL";      Market = "US"; Own = $false }
-              @{ Name = "Microsoft";       Ticker = "MSFT";      Market = "US"; Own = $true  }
-              @{ Name = "Amazon";          Ticker = "AMZN";      Market = "US"; Own = $false }
-              @{ Name = "Google A";        Ticker = "GOOGL";     Market = "US"; Own = $false }
-              @{ Name = "Tesla";           Ticker = "TSLA";      Market = "US"; Own = $false }
+              @{ Name = "ATCO B";           Ticker = "ATCO-B.ST"; Market = "SE"; Own = $true  }
+              @{ Name = "INVE B";           Ticker = "INVE-B.ST"; Market = "SE"; Own = $true  }
+              @{ Name = "VOLV B";           Ticker = "VOLV-B.ST"; Market = "SE"; Own = $false }
+              @{ Name = "SAAB B";           Ticker = "SAAB-B.ST"; Market = "SE"; Own = $false }
+              @{ Name = "SWED A";           Ticker = "SWED-A.ST"; Market = "SE"; Own = $false }
+              @{ Name = "SHB A";            Ticker = "SHB-A.ST";  Market = "SE"; Own = $false }
+              @{ Name = "SBB B";            Ticker = "SBB-B.ST";  Market = "SE"; Own = $false }
+              @{ Name = "SSAB B";           Ticker = "SSAB-B.ST"; Market = "SE"; Own = $false }
+              @{ Name = "Novo B";           Ticker = "NOVO-B.CO"; Market = "DK"; Own = $true  }
+              @{ Name = "NVDA";             Ticker = "NVDA";      Market = "US"; Own = $false }
+              @{ Name = "AAPL";             Ticker = "AAPL";      Market = "US"; Own = $false }
+              @{ Name = "MSFT";             Ticker = "MSFT";      Market = "US"; Own = $true  }
+              @{ Name = "AMZN";             Ticker = "AMZN";      Market = "US"; Own = $false }
+              @{ Name = "GOOGL";            Ticker = "GOOGL";     Market = "US"; Own = $false }
+              @{ Name = "TSLA";             Ticker = "TSLA";      Market = "US"; Own = $false }
           )
 
           function Get-WeeklyData([string]$Ticker) {
@@ -121,7 +121,7 @@ jobs:
                       default                { Get-WeeklyData $idx.Ticker }
                   }
                   $Results += [PSCustomObject]@{
-                      Name     = $idx.Ticker
+                      Name     = $idx.Name
                       Flag     = $Flag
                       Close    = $d.Close
                       WeekPct  = $d.WeekPct
@@ -130,7 +130,7 @@ jobs:
                   }
               } catch {
                   $Results += [PSCustomObject]@{
-                      Name     = $idx.Ticker
+                      Name     = $idx.Name
                       Flag     = $Flag
                       Close    = $null
                       WeekPct  = $null
@@ -146,9 +146,9 @@ jobs:
           foreach ($r in $Results) {
               $Portfolio = if ($r.Own) { ' 💼' } else { '' }
               if ($r.Error) {
-                  $lines += "<b>$($r.Flag) <code>$($r.Name)</code></b> — unavailable ⚠️$Portfolio"
+                  $lines += "<b>$($r.Flag) $($r.Name)</b> — unavailable ⚠️$Portfolio"
               } else {
-                  $lines += "<b>$($r.Flag) <code>$($r.Name)</code></b> — $($r.Close) $(Fmt $r.WeekPct)$Portfolio"
+                  $lines += "<b>$($r.Flag) $($r.Name)</b> — $($r.Close) $(Fmt $r.WeekPct)$Portfolio"
                   $lines += "1M: $(FmtFlat $r.MonthPct)"
               }
           }

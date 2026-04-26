@@ -21,12 +21,12 @@ jobs:
           $Threshold  = 2.0
           $MarketClosed = $T -lt 930 -or $T -ge 1320  # US market open 15:30–22:00 CET
           $Indices = @(
-              @{ Name = "NVIDIA";    Ticker = "NVDA";  Market = "US"; Own = $false }
-              @{ Name = "Apple";     Ticker = "AAPL";  Market = "US"; Own = $false }
-              @{ Name = "Microsoft"; Ticker = "MSFT";  Market = "US"; Own = $true  }
-              @{ Name = "Amazon";    Ticker = "AMZN";  Market = "US"; Own = $false }
-              @{ Name = "Google A";    Ticker = "GOOGL"; Market = "US"; Own = $false }
-              @{ Name = "Tesla";     Ticker = "TSLA";  Market = "US"; Own = $false }
+              @{ Name = "NVDA";     Ticker = "NVDA";  Market = "US"; Own = $false }
+              @{ Name = "AAPL";     Ticker = "AAPL";  Market = "US"; Own = $false }
+              @{ Name = "MSFT";     Ticker = "MSFT";  Market = "US"; Own = $true  }
+              @{ Name = "AMZN";     Ticker = "AMZN";  Market = "US"; Own = $false }
+              @{ Name = "GOOGL";    Ticker = "GOOGL"; Market = "US"; Own = $false }
+              @{ Name = "TSLA";     Ticker = "TSLA";  Market = "US"; Own = $false }
           )
 
           $Alerts = @()
@@ -48,7 +48,7 @@ jobs:
                                    } else {
                                        if ($Pct -ge 0) { "🟢 +$Pct%" } else { "🔴 $Pct%" }
                                    }
-                      $Alerts   += "<b>$Flag <code>$($idx.Ticker)</code></b>: $Price $Arrow$Portfolio"
+                      $Alerts   += "<b>$Flag $($idx.Name)</b>: $Price $Arrow$Portfolio"
                   }
               } catch {
                   Write-Warning "Failed $($idx.Name): $_"

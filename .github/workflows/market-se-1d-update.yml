@@ -20,17 +20,17 @@ jobs:
           $Now = [System.TimeZoneInfo]::ConvertTimeFromUtc([DateTime]::UtcNow, $TZ)
 
           $Indices = @(
-              @{ Name = "OMXSPI";          Ticker = "OMXSPI.INDX"; Market = "SE"; Own = $false }
-              @{ Name = "OMXS30";          Ticker = "OMXS30.INDX"; Market = "SE"; Own = $false }
-              @{ Name = "Atlas Copco B";   Ticker = "ATCO-B.ST";   Market = "SE"; Own = $true  }
-              @{ Name = "Investor B";      Ticker = "INVE-B.ST";   Market = "SE"; Own = $true  }
-              @{ Name = "Volvo B";         Ticker = "VOLV-B.ST";   Market = "SE"; Own = $false }
-              @{ Name = "SAAB B";          Ticker = "SAAB-B.ST";   Market = "SE"; Own = $false }
-              @{ Name = "Swedbank A";      Ticker = "SWED-A.ST";   Market = "SE"; Own = $false }
-              @{ Name = "Handelsbanken A"; Ticker = "SHB-A.ST";    Market = "SE"; Own = $false }
-              @{ Name = "SBB Norden B";   Ticker = "SBB-B.ST";    Market = "SE"; Own = $false }
-              @{ Name = "SSAB B";          Ticker = "SSAB-B.ST";   Market = "SE"; Own = $false }
-              @{ Name = "Novo Nordisk B";  Ticker = "NOVO-B.CO";   Market = "DK"; Own = $true  }
+              @{ Name = "OMXSPI";   Ticker = "OMXSPI.INDX"; Market = "SE"; Own = $false }
+              @{ Name = "OMXS30";   Ticker = "OMXS30.INDX"; Market = "SE"; Own = $false }
+              @{ Name = "ATCO B";   Ticker = "ATCO-B.ST";   Market = "SE"; Own = $true  }
+              @{ Name = "INVE B";   Ticker = "INVE-B.ST";   Market = "SE"; Own = $true  }
+              @{ Name = "VOLV B";   Ticker = "VOLV-B.ST";   Market = "SE"; Own = $false }
+              @{ Name = "SAAB B";   Ticker = "SAAB-B.ST";   Market = "SE"; Own = $false }
+              @{ Name = "SWED A";   Ticker = "SWED-A.ST";   Market = "SE"; Own = $false }
+              @{ Name = "SHB A";    Ticker = "SHB-A.ST";    Market = "SE"; Own = $false }
+              @{ Name = "SBB B";    Ticker = "SBB-B.ST";    Market = "SE"; Own = $false }
+              @{ Name = "SSAB B";   Ticker = "SSAB-B.ST";   Market = "SE"; Own = $false }
+              @{ Name = "Novo B";   Ticker = "NOVO-B.CO";   Market = "DK"; Own = $true  }
           )
 
           function Get-Se1dData([string]$Ticker) {
@@ -64,7 +64,7 @@ jobs:
               try {
                   $d = Get-Se1dData $idx.Ticker
                   $Results += [PSCustomObject]@{
-                      Name   = $idx.Ticker
+                      Name   = $idx.Name
                       Flag   = $Flag
                       Close  = $d.Close
                       DayPct = $d.DayPct
@@ -73,7 +73,7 @@ jobs:
                   }
               } catch {
                   $Results += [PSCustomObject]@{
-                      Name   = $idx.Ticker
+                      Name   = $idx.Name
                       Flag   = $Flag
                       Close  = $null
                       DayPct = $null
@@ -96,9 +96,9 @@ jobs:
           foreach ($r in $Results) {
               $Portfolio = if ($r.Own) { ' 💼' } else { '' }
               if ($r.Error) {
-                  $lines += "<b>$($r.Flag) <code>$($r.Name)</code></b> — unavailable ⚠️$Portfolio"
+                  $lines += "<b>$($r.Flag) $($r.Name)</b> — unavailable ⚠️$Portfolio"
               } else {
-                  $lines += "<b>$($r.Flag) <code>$($r.Name)</code></b> — $($r.Close) $(Fmt $r.DayPct)$Portfolio"
+                  $lines += "<b>$($r.Flag) $($r.Name)</b> — $($r.Close) $(Fmt $r.DayPct)$Portfolio"
               }
           }
 

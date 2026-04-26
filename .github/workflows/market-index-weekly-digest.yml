@@ -107,7 +107,7 @@ jobs:
               try {
                   $d = if ($idx.Market -eq "SE") { Get-SeWeeklyData $idx.Ticker } else { Get-WeeklyData $idx.Ticker }
                   $Results += [PSCustomObject]@{
-                      Name     = $idx.Ticker
+                      Name     = $idx.Name
                       Flag     = $Flag
                       Close    = $d.Close
                       WeekPct  = $d.WeekPct
@@ -115,7 +115,7 @@ jobs:
                   }
               } catch {
                   $Results += [PSCustomObject]@{
-                      Name     = $idx.Ticker
+                      Name     = $idx.Name
                       Flag     = $Flag
                       Close    = $null
                       WeekPct  = $null
@@ -129,9 +129,9 @@ jobs:
 
           foreach ($r in $Results) {
               if ($r.Error) {
-                  $lines += "<b>$($r.Flag) <code>$($r.Name)</code></b> — unavailable ⚠️"
+                  $lines += "<b>$($r.Flag) $($r.Name)</b> — unavailable ⚠️"
               } else {
-                  $lines += "<b>$($r.Flag) <code>$($r.Name)</code></b> — $($r.Close) $(Fmt $r.WeekPct)"
+                  $lines += "<b>$($r.Flag) $($r.Name)</b> — $($r.Close) $(Fmt $r.WeekPct)"
                   $lines += "1M: $(FmtFlat $r.MonthPct)"
               }
           }
