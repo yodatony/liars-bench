@@ -6,7 +6,7 @@ on:
     - cron: '49 3 * * 2-6'
 
 jobs:
-  index-1d-update:
+  send-update:
     runs-on: ubuntu-latest
     steps:
       - name: Send index daily update
