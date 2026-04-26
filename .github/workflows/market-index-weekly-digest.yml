@@ -6,7 +6,7 @@ on:
     - cron: '53 10 * * 0'
 
 jobs:
-  weekly-digest:
+  send-digest:
     runs-on: ubuntu-latest
     steps:
       - name: Send weekly digest

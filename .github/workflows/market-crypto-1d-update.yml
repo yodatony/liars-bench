@@ -6,7 +6,7 @@ on:
     - cron: '44 3 * * *'
 
 jobs:
-  crypto-1d-update:
+  send-info:
     runs-on: ubuntu-latest
     steps:
       - name: Send crypto daily update

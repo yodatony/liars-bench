@@ -6,7 +6,7 @@ on:
     - cron: '54 3 * * 2-6'
 
 jobs:
-  send-update:
+  send-info:
     runs-on: ubuntu-latest
     steps:
       - name: Send stock daily update

@@ -6,7 +6,7 @@ on:
     - cron: '49 10 * * 0'
 
 jobs:
-  crypto-weekly-digest:
+  send-digest:
     runs-on: ubuntu-latest
     steps:
       - name: Send crypto weekly digest
