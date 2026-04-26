@@ -79,17 +79,10 @@ jobs:
               foreach ($idx in $IdxList) {
                   try {
                       $d         = Get-IndexData $idx.Ticker $idx.Market
-                      $Flag      = switch ($idx.Market) {
-                          "SE"  { "🇸🇪" }
-                          "US"  { "🇺🇸" }
-                          default { $idx.Market }
-                      }
                       $Portfolio = if ($idx.Own) { ' 💼' } else { '' }
-                      $out   += "<b>$Flag $($idx.Name)</b> — $($d.Current)$Portfolio"
-                      $out   += "1D: $(if ($UsMarketOpen) { Fmt $d.DayPct } else { FmtArrow $d.DayPct }) | 1W: $(FmtArrow $d.WeekPct)"
-                      $out   += "1M: $(FmtArrow $d.MonthPct) | YTD: $(FmtArrow $d.YtdPct)"
+                      $out   += "<b>$($idx.Name)</b> — $($d.Current) $(if ($UsMarketOpen) { Fmt $d.DayPct } else { FmtArrow $d.DayPct })$Portfolio"
                   } catch {
-                      $out   += "<b>$Flag $($idx.Name)</b> — unavailable ⚠️"
+                      $out   += "<b>$($idx.Name)</b> — unavailable ⚠️"
                       $out   += "<i>Error: $($_.Exception.Message)</i>"
                   }
               }
@@ -110,7 +103,7 @@ jobs:
           else {
               $lines += "<b>US Market Hourly Update 📈</b>"
               $lines += "$($Now.ToString('yyyy-MM-dd HH:mm')) CET"
-              $lines += "<i>$usStatus</i>"
+              $lines += "<i>🇺🇸 $usStatus</i>"
               $lines += ""
               $lines += Get-Lines $Indices
           }
