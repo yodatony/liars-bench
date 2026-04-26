@@ -129,9 +129,9 @@ jobs:
 
           foreach ($r in $Results) {
               if ($r.Error) {
-                  $lines += "<b>$($r.Flag) $($r.Name)</b> — unavailable ⚠️"
+                  $lines += "<b>$($r.Flag) <code>$($r.Name)</code></b> — unavailable ⚠️"
               } else {
-                  $lines += "<b>$($r.Flag) $($r.Name)</b> — $($r.Close) $(Fmt $r.WeekPct)"
+                  $lines += "<b>$($r.Flag) <code>$($r.Name)</code></b> — $($r.Close) $(Fmt $r.WeekPct)"
                   $lines += "1M: $(FmtFlat $r.MonthPct)"
               }
           }

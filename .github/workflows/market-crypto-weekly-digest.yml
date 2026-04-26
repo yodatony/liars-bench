@@ -104,9 +104,9 @@ jobs:
           foreach ($r in $Results) {
               $Portfolio = if ($r.Own) { ' 💼' } else { '' }
               if ($r.Error) {
-                  $lines += "<b>$($r.Flag) $($r.Name)</b> — unavailable ⚠️$Portfolio"
+                  $lines += "<b>$($r.Flag) <code>$($r.Name)</code></b> — unavailable ⚠️$Portfolio"
               } else {
-                  $lines += "<b>$($r.Flag) $($r.Name)</b> — $($r.Close) $(Fmt $r.WeekPct)$Portfolio"
+                  $lines += "<b>$($r.Flag) <code>$($r.Name)</code></b> — $($r.Close) $(Fmt $r.WeekPct)$Portfolio"
                   $lines += "1M: $(FmtFlat $r.MonthPct)"
               }
           }

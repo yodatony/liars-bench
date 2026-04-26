@@ -48,7 +48,7 @@ jobs:
                                    } else {
                                        if ($Pct -ge 0) { "🟢 +$Pct%" } else { "🔴 $Pct%" }
                                    }
-                      $Alerts   += "<b>$Flag $($idx.Ticker)</b>: $Price $Arrow$Portfolio"
+                      $Alerts   += "<b>$Flag <code>$($idx.Ticker)</code></b>: $Price $Arrow$Portfolio"
                   }
               } catch {
                   Write-Warning "Failed $($idx.Name): $_"
