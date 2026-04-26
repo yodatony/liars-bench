@@ -106,7 +106,7 @@ jobs:
           $Yesterday = ($Results | Where-Object { $_.Date } | Select-Object -First 1).Date
 
           $lines = @(
-              "<b>Stock — Daily update 📈</b>"
+              "<b>STOCK</b> - Daily update 📈"
               "Yesterday: $Yesterday"
               "<i>Previous trading day movement</i>"
               ""
