@@ -26,21 +26,23 @@ jobs:
           )
 
           function Get-CryptoWeeklyData([string]$Ticker) {
-              # "Last week" = Monday candle open vs Friday candle close
+              # Monday open vs real-time latest price
               $Enc = [Uri]::EscapeDataString($Ticker)
               $R   = Invoke-RestMethod `
                          -Uri "https://api.twelvedata.com/time_series?symbol=$Enc&interval=1day&outputsize=10&apikey=$($env:TWELVEDATA_KEY)" `
                          -ErrorAction Stop
               if ($R.status -eq "error") { throw "Twelve Data: $($R.message)" }
               $MondayRow  = $R.values | Where-Object { [DateTime]::Parse($_.datetime).DayOfWeek -eq 'Monday' } | Select-Object -First 1
-              $FridayRow  = $R.values | Where-Object { [DateTime]::Parse($_.datetime).DayOfWeek -eq 'Friday' } | Select-Object -First 1
               if (-not $MondayRow) { throw "No Monday candle found for $Ticker" }
-              if (-not $FridayRow) { throw "No Friday candle found for $Ticker" }
               $MondayOpen  = [double]$MondayRow.open
-              $FridayClose = [double]$FridayRow.close
-              $WeekPct     = if ($MondayOpen -eq 0) { $null } else { [math]::Round(($FridayClose - $MondayOpen) / $MondayOpen * 100, 2) }
+              $PriceR = Invoke-RestMethod `
+                            -Uri "https://api.twelvedata.com/price?symbol=$Enc&apikey=$($env:TWELVEDATA_KEY)" `
+                            -ErrorAction Stop
+              if ($PriceR.status -eq "error") { throw "Twelve Data price: $($PriceR.message)" }
+              $LatestPrice = [double]$PriceR.price
+              $WeekPct     = if ($MondayOpen -eq 0) { $null } else { [math]::Round(($LatestPrice - $MondayOpen) / $MondayOpen * 100, 2) }
               [PSCustomObject]@{
-                  Close   = [math]::Round($FridayClose, 2)
+                  Close   = [math]::Round($LatestPrice, 2)
                   WeekPct = $WeekPct
               }
           }
@@ -50,12 +52,10 @@ jobs:
               "$(if ($v -ge 0) { '🟢 +' } else { '🔴 ' })$v%"
           }
 
-          $LastFriday = $Now.AddDays(-2).ToString('yyyy-MM-dd')
-
           $lines = @(
               "<b>Weekly Crypto Market Digest 📊</b>"
-              "Week ending Friday $LastFriday"
-              "<i>Last week's movement</i>"
+              "This week's movement"
+              "<i>Monday open → latest close</i>"
               ""
           )
 
