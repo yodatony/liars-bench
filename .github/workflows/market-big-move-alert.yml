@@ -41,14 +41,13 @@ jobs:
                   $Price = [math]::Round([double]$R.close, 2)
 
                   if ([math]::Abs($Pct) -ge $Threshold) {
-                      $Flag      = "🇺🇸"
                       $Portfolio = if ($idx.Own) { '💼' } else { '' }
                       $Arrow     = if ($MarketClosed) {
                                        if ($Pct -ge 0) { "(+$Pct%) ▲" } else { "($Pct%) ▼" }
                                    } else {
                                        if ($Pct -ge 0) { "(+$Pct%) 🟢" } else { "($Pct%) 🔴" }
                                    }
-                      $Alerts   += "<b>$Flag $($idx.Name)</b> $Price $Arrow $Portfolio"
+                      $Alerts   += "<b>$($idx.Name)</b> $Price $Arrow $Portfolio"
                   }
               } catch {
                   Write-Warning "Failed $($idx.Name): $_"
@@ -60,7 +59,7 @@ jobs:
           $lines = @(
               "<b>Big Move Alert ⚠️</b>"
               "$($Now.ToString('yyyy-MM-dd HH:mm')) CET"
-              "<i>Intraday move >2% — $(if ($MarketClosed) { 'Closed 🔕' } else { 'Open 🔔' })</i>"
+              "<i>Intraday move >2% — 🇺🇸 $(if ($MarketClosed) { 'Closed 🔕' } else { 'Open 🔔' })</i>"
               ""
           ) + $Alerts
 
