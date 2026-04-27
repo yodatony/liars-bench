@@ -52,10 +52,15 @@ jobs:
 
           $Results = @()
           foreach ($idx in $Indices) {
+              $Flag = switch ($idx.Market) {
+                  "CRYPTO" { "💵" }
+                  default  { $idx.Market }
+              }
               try {
                   $d = Get-CryptoData $idx.Ticker
                   $Results += [PSCustomObject]@{
                       Name   = $idx.Name
+                      Flag   = $Flag
                       Close  = $d.Close
                       DayPct = $d.DayPct
                       Date   = $d.Date
@@ -64,6 +69,7 @@ jobs:
               } catch {
                   $Results += [PSCustomObject]@{
                       Name   = $idx.Name
+                      Flag   = $Flag
                       Close  = $null
                       DayPct = $null
                       Own    = $idx.Own
@@ -78,16 +84,16 @@ jobs:
           $lines = @(
               "<b>CRYPTO</b> - Daily update 📈"
               "Yesterday: $Yesterday"
-              "<i>💵 Previous day movement (UTC)</i>"
+              "<i>Previous day movement (UTC)</i>"
               ""
           )
 
           foreach ($r in $Results) {
               $Portfolio = if ($r.Own) { '💼' } else { '' }
               if ($r.Error) {
-                  $lines += "<b>$($r.Name)</b> — unavailable ⚠️$Portfolio"
+                  $lines += "<b>$($r.Flag) $($r.Name)</b> — unavailable ⚠️$Portfolio"
               } else {
-                  $lines += "<b>$($r.Name)</b> $($r.Close) $(Fmt $r.DayPct) $Portfolio"
+                  $lines += "<b>$($r.Flag) $($r.Name)</b> $($r.Close) $(Fmt $r.DayPct) $Portfolio"
               }
           }
 
