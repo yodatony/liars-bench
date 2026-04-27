@@ -34,14 +34,14 @@ jobs:
                   DayPct  = [math]::Round([double]$R.percent_change, 2)
               }
           }
-            
+
           function Fmt([object]$v) {
               if ($null -eq $v) { return "N/A" }
               "$(if ($v -ge 0) { "(+$v%) 🟢" } else { "($v%) 🔴" })"
           }
 
           $lines = @(
-              "<b>CRYPTO</b> - Hourly update 📈"
+              "<b>CRYPTO</b> — Hourly update 📈"
               "$($Now.ToString('yyyy-MM-dd HH:mm')) CET"
               "<i>💵 Open 24/7 🔔</i>"
               ""
