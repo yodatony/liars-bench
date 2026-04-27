@@ -19,8 +19,8 @@ jobs:
 
           $Indices = @(
               @{ Name = "BTC/USD";  Ticker = "BTC/USD"; Market = "CRYPTO"; Own = $true }
-              @{ Name = "ETH/USD";  Ticker = "ETH/USD"; Market = "CRYPTO"; Own = $false }
-              @{ Name = "XRP/USD";  Ticker = "XRP/USD"; Market = "CRYPTO"; Own = $false }
+              @{ Name = "ETH/USD";  Ticker = "ETH/USD"; Market = "CRYPTO"; Own = $true }
+              @{ Name = "XRP/USD";  Ticker = "XRP/USD"; Market = "CRYPTO"; Own = $true }
           )
 
           function Get-IndexData([string]$Ticker) {
