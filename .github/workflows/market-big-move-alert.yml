@@ -42,13 +42,13 @@ jobs:
 
                   if ([math]::Abs($Pct) -ge $Threshold) {
                       $Flag      = "🇺🇸"
-                      $Portfolio = if ($idx.Own) { ' 💼' } else { '' }
+                      $Portfolio = if ($idx.Own) { '💼' } else { '' }
                       $Arrow     = if ($MarketClosed) {
-                                       if ($Pct -ge 0) { "▲ +$Pct%" } else { "▼ $Pct%" }
+                                       if ($Pct -ge 0) { "(+$Pct%) ▲" } else { "($Pct%) ▼" }
                                    } else {
-                                       if ($Pct -ge 0) { "🟢 +$Pct%" } else { "🔴 $Pct%" }
+                                       if ($Pct -ge 0) { "(+$Pct%) 🟢" } else { "($Pct%) 🔴" }
                                    }
-                      $Alerts   += "<b>$Flag $($idx.Name)</b>: $Price $Arrow$Portfolio"
+                      $Alerts   += "<b>$Flag $($idx.Name)</b> $Price $Arrow $Portfolio"
                   }
               } catch {
                   Write-Warning "Failed $($idx.Name): $_"

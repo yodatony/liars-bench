@@ -69,7 +69,7 @@ jobs:
 
           function Fmt([object]$v) {
               if ($null -eq $v) { return "N/A" }
-              "$(if ($v -ge 0) { '🟢 +' } else { '🔴 ' })$v%"
+              "$(if ($v -ge 0) { "(+$v%) 🟢" } else { "($v%) 🔴" })"
           }
 
           $Results = @()
@@ -113,11 +113,11 @@ jobs:
           )
 
           foreach ($r in $Results) {
-              $Portfolio = if ($r.Own) { ' 💼' } else { '' }
+              $Portfolio = if ($r.Own) { '💼' } else { '' }
               if ($r.Error) {
                   $lines += "<b>$($r.Flag) $($r.Name)</b> — unavailable ⚠️$Portfolio"
               } else {
-                  $lines += "<b>$($r.Flag) $($r.Name)</b> — $($r.Close) $(Fmt $r.DayPct)$Portfolio"
+                  $lines += "<b>$($r.Flag) $($r.Name)</b> $($r.Close) $(Fmt $r.DayPct) $Portfolio"
               }
           }
 
