@@ -45,12 +45,12 @@ jobs:
 
           function Fmt([object]$v) {
               if ($null -eq $v) { return "N/A" }
-              "$(if ($v -ge 0) { '🟢 +' } else { '🔴 ' })$v%"
+              "$(if ($v -ge 0) { "(+$v%) 🟢" } else { "($v%) 🔴" })"
           }
 
           function FmtArrow([object]$v) {
               if ($null -eq $v) { return "N/A" }
-              "$(if ($v -ge 0) { '▲ +' } else { '▼ ' })$v%"
+              "$(if ($v -ge 0) { "(+$v%) ▲" } else { "($v%) ▼" })"
           }
 
           function Get-Lines($IdxList) {
@@ -58,8 +58,8 @@ jobs:
               foreach ($idx in $IdxList) {
                   try {
                       $d         = Get-IndexData $idx.Ticker $idx.Market
-                      $Portfolio = if ($idx.Own) { ' 💼' } else { '' }
-                      $out   += "<b>$($idx.Name)</b> — $($d.Current) $(if ($UsMarketOpen) { Fmt $d.DayPct } else { FmtArrow $d.DayPct })$Portfolio"
+                      $Portfolio = if ($idx.Own) { '💼' } else { '' }
+                      $out   += "<b>$($idx.Name)</b> $($d.Current) $(if ($UsMarketOpen) { Fmt $d.DayPct } else { FmtArrow $d.DayPct }) $Portfolio"
                   } catch {
                       $out   += "<b>$($idx.Name)</b> — unavailable ⚠️"
                       $out   += "<i>Error: $($_.Exception.Message)</i>"
