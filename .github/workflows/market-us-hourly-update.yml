@@ -32,35 +32,14 @@ jobs:
           )
 
           function Get-IndexData([string]$Ticker, [string]$Market) {
-              $Year = $Now.Year.ToString()
-
-              $Enc  = [Uri]::EscapeDataString($Ticker)
-              $R    = Invoke-RestMethod `
-                          -Uri "https://api.twelvedata.com/time_series?symbol=$Enc&interval=1day&outputsize=252&apikey=$($env:TWELVEDATA_KEY)" `
-                          -ErrorAction Stop
+              $Enc = [Uri]::EscapeDataString($Ticker)
+              $R   = Invoke-RestMethod `
+                         -Uri "https://api.twelvedata.com/quote?symbol=$Enc&apikey=$($env:TWELVEDATA_KEY)" `
+                         -ErrorAction Stop
               if ($R.status -eq "error") { throw "TwelveData: $($R.message)" }
-              $Rows = @($R.values | ForEach-Object {
-                  [PSCustomObject]@{ date = $_.datetime; close = [double]$_.close }
-              })
-              if ($Rows.Count -eq 0) { throw "No data returned for $Ticker" }
-
-              $N   = $Rows.Count
-              $Cur = $Rows[0].close
-              $YtdClose = ($Rows | Where-Object { $_.date -like "$Year*" } | Select-Object -Last 1).close
-
-              function Pct($From) {
-                  if (-not $From -or $From -eq 0) { return $null }
-                  [math]::Round(($Cur - $From) / $From * 100, 2)
-              }
-
-              $WeekIdx = 5
-
               [PSCustomObject]@{
-                  Current  = [math]::Round($Cur, 2)
-                  DayPct   = Pct $Rows[1].close
-                  WeekPct  = Pct ($N -ge ($WeekIdx + 1) ? $Rows[$WeekIdx].close : $Rows[$N-1].close)
-                  MonthPct = Pct ($N -ge 22 ? $Rows[21].close : $Rows[$N-1].close)
-                  YtdPct   = Pct $YtdClose
+                  Current = [math]::Round([double]$R.close, 2)
+                  DayPct  = [math]::Round([double]$R.percent_change, 2)
               }
           }
 
