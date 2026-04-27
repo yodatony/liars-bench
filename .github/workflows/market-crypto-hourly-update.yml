@@ -34,7 +34,7 @@ jobs:
                   DayPct  = [math]::Round([double]$R.percent_change, 2)
               }
           }
-
+            
           function Fmt([object]$v) {
               if ($null -eq $v) { return "N/A" }
               "$(if ($v -ge 0) { "(+$v%) 🟢" } else { "($v%) 🔴" })"
