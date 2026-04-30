@@ -18,7 +18,7 @@ jobs:
           $Now    = [System.TimeZoneInfo]::ConvertTimeFromUtc([DateTime]::UtcNow, $TZ)
           $T      = $Now.Hour * 60 + $Now.Minute
 
-          $Threshold  = 2.0
+          $Threshold  = 2.5
           $MarketClosed = $T -lt 930 -or $T -ge 1320  # US market open 15:30–22:00 CET
           $Indices = @(
               @{ Name = "NVDA";     Ticker = "NVDA";  Market = "US"; Own = $false }
@@ -59,7 +59,7 @@ jobs:
           $lines = @(
               "<b>Big Move Alert ⚠️</b>"
               "$($Now.ToString('yyyy-MM-dd HH:mm')) CET"
-              "<i>🇺🇸 $(if ($MarketClosed) { 'Closed 🔕' } else { 'Open 🔔' }) — Intraday move >2%</i>"
+              "<i>🇺🇸 $(if ($MarketClosed) { 'Closed 🔕' } else { 'Open 🔔' }) — Intraday move >$($Threshold)%</i>"
               ""
           ) + $Alerts
 
