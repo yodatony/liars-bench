@@ -69,7 +69,7 @@ jobs:
           $lines = @(
               "<b>CRYPTO</b> — Weekly digest 📊"
               "Monday open → latest close"
-              "<i>1M = 30 calendar days</i>"
+              "1M = 30 calendar days"
               ""
           )
 
@@ -107,7 +107,7 @@ jobs:
                   $lines += "<b>$($r.Flag) $($r.Name)</b> — unavailable ⚠️$Portfolio"
               } else {
                   $lines += "<b>$($r.Flag) $($r.Name)</b> $($r.Close) $(Fmt $r.WeekPct) $Portfolio"
-                  $lines += "<i>1M: $(FmtFlat $r.MonthPct)</i>"
+                  $lines += "1M: $(FmtFlat $r.MonthPct)"
               }
           }
 
