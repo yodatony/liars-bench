@@ -60,7 +60,7 @@ jobs:
 
           function Fmt([object]$v) {
               if ($null -eq $v) { return "N/A" }
-              "$(if ($v -ge 0) { "(+$v%) 🟢" } else { "($v%) 🔴" })"
+              "$(if ($v -ge 0) { "(<b>+$v%</b>) 🟢" } else { "(<b>$v%</b>) 🔴" })"
           }
 
           function FmtFlat([object]$v) {
@@ -71,7 +71,7 @@ jobs:
           $lines = @(
               "<b>CRYPTO</b> — Weekly digest 📊"
               "<i>Monday open → latest close</i>"
-              "<i>1M = 30 calendar days | 6M = 182 | 1Y = 365</i>"
+              "<i>1M = 30 | 6M = 182 | 1Y = 365</i>"
               ""
           )
 
