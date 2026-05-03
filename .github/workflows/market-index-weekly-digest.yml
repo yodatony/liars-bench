@@ -130,7 +130,7 @@ jobs:
                   $lines += "<b>$($r.Flag) $($r.Name)</b> — unavailable ⚠️"
               } else {
                   $lines += "<b>$($r.Flag) $($r.Name)</b> $($r.Close) $(Fmt $r.WeekPct)"
-                  $lines += "<i>1M: $(FmtFlat $r.MonthPct)</i>
+                  $lines += "<i>1M: $(FmtFlat $r.MonthPct)</i>"
               }
           }
 
