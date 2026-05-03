@@ -60,7 +60,7 @@ jobs:
 
           function Fmt([object]$v) {
               if ($null -eq $v) { return "N/A" }
-              "$(if ($v -ge 0) { "(<b>+$v%</b>) 🟢" } else { "(<b>$v%</b>) 🔴" })"
+              "$(if ($v -ge 0) { "<b>+$v%</b> 🟢" } else { "<b>($v%)</b> 🔴" })"
           }
 
           function FmtFlat([object]$v) {
