@@ -154,7 +154,7 @@ jobs:
               if ($r.Error) {
                   $lines += "<b>$($r.Flag) $($r.Name)</b> — unavailable ⚠️$Portfolio"
               } else {
-                  $lines += "<b>$($r.Flag) $($r.Name)</b> $($r.Close) <b>$(Fmt $r.WeekPct)</b> $Portfolio"
+                  $lines += "<b>$($r.Flag) $($r.Name)</b> ($($r.Close)) <b>$(Fmt $r.WeekPct)</b> $Portfolio"
                   $lines += "<i>1M: $(FmtFlat $r.MonthPct) | 6M: $(FmtFlat $r.SixMoPct) | 1Y: $(FmtFlat $r.YearPct)</i>"
               }
           }

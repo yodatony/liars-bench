@@ -121,7 +121,7 @@ jobs:
               if ($r.Error) {
                   $lines += "<b>$($r.Flag) $($r.Name)</b> — unavailable ⚠️$Portfolio"
               } else {
-                  $lines += "<b>$($r.Flag) $($r.Name)</b> $($r.Close) <b>$(Fmt $r.DayPct)</b> $Portfolio"
+                  $lines += "<b>$($r.Flag) $($r.Name)</b> ($($r.Close)) <b>$(Fmt $r.DayPct)</b> $Portfolio"
               }
           }
 

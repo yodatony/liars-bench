@@ -62,7 +62,7 @@ jobs:
                       $d         = Get-IndexData $idx.Ticker $idx.Market
                       if (-not $script:CandleDate) { $script:CandleDate = $d.Date }
                       $Portfolio = if ($idx.Own) { '💼' } else { '' }
-                      $out   += "<b>$($idx.Name)</b> $($d.Current) <b>$((if ($UsMarketOpen) { Fmt $d.DayPct } else { FmtArrow $d.DayPct }))</b> $Portfolio"
+                      $out   += "<b>$($idx.Name)</b> ($($d.Current)) <b>$((if ($UsMarketOpen) { Fmt $d.DayPct } else { FmtArrow $d.DayPct }))</b> $Portfolio"
                   } catch {
                       $out   += "<b>$($idx.Name)</b> — unavailable ⚠️"
                       $out   += "<i>Error: $($_.Exception.Message)</i>"

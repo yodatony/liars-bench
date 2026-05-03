@@ -47,7 +47,7 @@ jobs:
                                    } else {
                                        if ($Pct -ge 0) { "+$Pct% 🟢" } else { "$Pct% 🔴" }
                                    }
-                      $Alerts   += "<b>$($idx.Name)</b> $Price <b>$Arrow</b> $Portfolio"
+                      $Alerts   += "<b>$($idx.Name)</b> ($Price) <b>$Arrow</b> $Portfolio"
                   }
               } catch {
                   Write-Warning "Failed $($idx.Name): $_"
