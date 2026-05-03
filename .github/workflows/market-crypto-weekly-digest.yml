@@ -71,7 +71,7 @@ jobs:
           $lines = @(
               "<b>CRYPTO</b> — Weekly digest 📊"
               "<i>Monday open → latest close</i>"
-              "<i>1M = 31 days | 6M = 182 days | 1Y = 365 days</i>"
+              "<i>1M = 30 calendar days | 6M = 182 | 1Y = 365</i>"
               ""
           )
 
