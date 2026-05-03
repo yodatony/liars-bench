@@ -40,6 +40,7 @@ jobs:
               [PSCustomObject]@{
                   Current = [math]::Round([double]$R.close, 2)
                   DayPct  = [math]::Round([double]$R.percent_change, 2)
+                  Date    = $R.datetime.Substring(0, 10)
               }
           }
 
@@ -53,11 +54,13 @@ jobs:
               "$(if ($v -ge 0) { "+$v% ▲" } else { "$v% ▼" })"
           }
 
+          $CandleDate = $null
           function Get-Lines($IdxList) {
               $out = @()
               foreach ($idx in $IdxList) {
                   try {
                       $d         = Get-IndexData $idx.Ticker $idx.Market
+                      if (-not $script:CandleDate) { $script:CandleDate = $d.Date }
                       $Portfolio = if ($idx.Own) { '💼' } else { '' }
                       $out   += "<b>$($idx.Name)</b> $($d.Current) <b>$((if ($UsMarketOpen) { Fmt $d.DayPct } else { FmtArrow $d.DayPct }))</b> $Portfolio"
                   } catch {
@@ -85,6 +88,12 @@ jobs:
               $lines += "<i>🇺🇸 $usStatus</i>"
               $lines += ""
               $lines += Get-Lines $Indices
+          }
+
+          $TodayDate = $Now.ToString("yyyy-MM-dd")
+          if ($CandleDate -and $CandleDate -ne $TodayDate) {
+              Write-Host "No trading today ($CandleDate), skipping."
+              exit 0
           }
 
           $body = @{
