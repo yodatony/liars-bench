@@ -90,7 +90,7 @@ jobs:
           $lines = @(
               "<b>INDEX</b> — Weekly digest 📊"
               "Last 5 trading days"
-              "<i>Movement below</i>"
+              "<i>1M = 21 trading days</i>"
               ""
           )
 
@@ -130,7 +130,7 @@ jobs:
                   $lines += "<b>$($r.Flag) $($r.Name)</b> — unavailable ⚠️"
               } else {
                   $lines += "<b>$($r.Flag) $($r.Name)</b> $($r.Close) $(Fmt $r.WeekPct)"
-                  $lines += "1M: $(FmtFlat $r.MonthPct)"
+                  $lines += "<i>1M: $(FmtFlat $r.MonthPct)</i>
               }
           }
 
