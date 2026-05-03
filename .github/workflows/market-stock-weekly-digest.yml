@@ -98,12 +98,10 @@ jobs:
               "$(if ($v -ge 0) { '+' })$v%"
           }
 
-          $LastFriday = $Now.AddDays(-2).ToString('yyyy-MM-dd')
-
           $lines = @(
               "<b>STOCK</b> — Weekly digest 📊"
-              "Week ending Friday $LastFriday"
-              "<i>This week's movement</i>"
+              "Last 5 trading days"
+              "<i>1M = 21 trading days</i>"
               ""
           )
 
