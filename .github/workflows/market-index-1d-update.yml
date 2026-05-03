@@ -58,7 +58,7 @@ jobs:
 
           function Fmt([object]$v) {
               if ($null -eq $v) { return "N/A" }
-              "$(if ($v -ge 0) { "(+$v%) 🟢" } else { "($v%) 🔴" })"
+              "$(if ($v -ge 0) { "+$v% 🟢" } else { "$v% 🔴" })"
           }
 
           $Results = @()
@@ -89,12 +89,14 @@ jobs:
           }
 
           $Results = $Results | Sort-Object -Property DayPct -Descending
-          $Yesterday = ($Results | Where-Object { $_.Date } | Select-Object -First 1).Date
+          $YesterdayDate = ($Results | Where-Object { $_.Date } | Select-Object -First 1).Date
+          $YesterdayDay  = [DateTime]::Parse($YesterdayDate).ToString("dddd")
+          $Yesterday     = "$YesterdayDay $YesterdayDate"
 
           $lines = @(
               "<b>INDEX</b> — Daily update 📈"
-              "Yesterday: $Yesterday"
               "<i>Previous trading day movement</i>"
+              "<i>$Yesterday</i>"
               ""
           )
 
@@ -102,7 +104,7 @@ jobs:
               if ($r.Error) {
                   $lines += "<b>$($r.Flag) $($r.Name)</b> — unavailable ⚠️"
               } else {
-                  $lines += "<b>$($r.Flag) $($r.Name)</b> $($r.Close) $(Fmt $r.DayPct)"
+                  $lines += "<b>$($r.Flag) $($r.Name)</b> $($r.Close) <b>$(Fmt $r.DayPct)</b>"
               }
           }
 
