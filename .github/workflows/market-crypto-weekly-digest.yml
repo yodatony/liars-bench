@@ -29,7 +29,7 @@ jobs:
               # Monday open vs real-time latest price
               $Enc  = [Uri]::EscapeDataString($Ticker)
               $R    = Invoke-RestMethod `
-                          -Uri "https://api.twelvedata.com/time_series?symbol=$Enc&interval=1day&outputsize=31&apikey=$($env:TWELVEDATA_KEY)" `
+                          -Uri "https://api.twelvedata.com/time_series?symbol=$Enc&interval=1day&outputsize=366&apikey=$($env:TWELVEDATA_KEY)" `
                           -ErrorAction Stop
               if ($R.status -eq "error") { throw "Twelve Data: $($R.message)" }
               $Rows = @($R.values | ForEach-Object {
@@ -52,7 +52,9 @@ jobs:
               [PSCustomObject]@{
                   Close    = [math]::Round($LatestPrice, 2)
                   WeekPct  = Pct $MondayOpen
-                  MonthPct = Pct ($N -ge 31 ? $Rows[30].close : $Rows[$N-1].close)
+                  MonthPct = Pct ($N -ge 31  ? $Rows[30].close  : $Rows[$N-1].close)
+                  SixMoPct = Pct ($N -ge 183 ? $Rows[182].close : $Rows[$N-1].close)
+                  YearPct  = Pct ($N -ge 366 ? $Rows[365].close : $Rows[$N-1].close)
               }
           }
 
@@ -68,8 +70,8 @@ jobs:
 
           $lines = @(
               "<b>CRYPTO</b> — Weekly digest 📊"
-              "Monday open → latest close"
-              "1M = 30 calendar days"
+              "<i>Monday open → latest close</i>"
+              "<i>1M = 31 days | 6M = 182 days | 1Y = 365 days</i>"
               ""
           )
 
@@ -84,6 +86,8 @@ jobs:
                       Close    = $d.Close
                       WeekPct  = $d.WeekPct
                       MonthPct = $d.MonthPct
+                      SixMoPct = $d.SixMoPct
+                      YearPct  = $d.YearPct
                       Own      = $idx.Own
                   }
               } catch {
@@ -93,6 +97,8 @@ jobs:
                       Close    = $null
                       WeekPct  = $null
                       MonthPct = $null
+                      SixMoPct = $null
+                      YearPct  = $null
                       Own      = $idx.Own
                       Error    = $true
                   }
@@ -107,7 +113,7 @@ jobs:
                   $lines += "<b>$($r.Flag) $($r.Name)</b> — unavailable ⚠️$Portfolio"
               } else {
                   $lines += "<b>$($r.Flag) $($r.Name)</b> $($r.Close) $(Fmt $r.WeekPct) $Portfolio"
-                  $lines += "1M: $(FmtFlat $r.MonthPct)"
+                  $lines += "1M: $(FmtFlat $r.MonthPct) | 6M: $(FmtFlat $r.SixMoPct) | 1Y: $(FmtFlat $r.YearPct)"
               }
           }
 
