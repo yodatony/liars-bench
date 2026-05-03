@@ -37,12 +37,12 @@ jobs:
 
           function Fmt([object]$v) {
               if ($null -eq $v) { return "N/A" }
-              "$(if ($v -ge 0) { "(+$v%) 🟢" } else { "($v%) 🔴" })"
+              "$(if ($v -ge 0) { "+$v% 🟢" } else { "$v% 🔴" })"
           }
 
           $lines = @(
               "<b>CRYPTO</b> — Hourly update 📈"
-              "$($Now.ToString('yyyy-MM-dd HH:mm')) CET"
+              "<i>$($Now.ToString('yyyy-MM-dd HH:mm')) CET</i>"
               "<i>💵 Open 24/7 🔔</i>"
               ""
           )
@@ -51,7 +51,7 @@ jobs:
               try {
                   $d         = Get-IndexData $idx.Ticker
                   $Portfolio = if ($idx.Own) { '💼' } else { '' }
-                  $lines += "<b>$($idx.Name)</b> $($d.Current) $(Fmt $d.DayPct) $Portfolio"
+                  $lines += "<b>$($idx.Name)</b> $($d.Current) <b>$((Fmt $d.DayPct))</b> $Portfolio"
               } catch {
                   $lines += "<b>$($idx.Name)</b> — unavailable ⚠️"
                   $lines += "  <i>Error: $($_.Exception.Message)</i>"
