@@ -102,10 +102,12 @@ jobs:
               }
           }
 
-          $Results = $Results | Sort-Object -Property DayPct -Descending
-          $YesterdayDate = ($Results | Where-Object { $_.Date } | Select-Object -First 1).Date
-          $YesterdayDay  = [DateTime]::Parse($YesterdayDate).ToString("dddd")
+          $YesterdayDate = $Now.AddDays(-1).ToString("yyyy-MM-dd")
+          $YesterdayDay  = $Now.AddDays(-1).ToString("dddd")
           $Yesterday     = "$YesterdayDay $YesterdayDate"
+
+          $Results = $Results | Where-Object { $_.Date -eq $YesterdayDate } |
+                     Sort-Object -Property DayPct -Descending
 
           $lines = @(
               "<b>STOCK</b> — Daily update 📈"
