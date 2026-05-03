@@ -45,12 +45,12 @@ jobs:
 
           function Fmt([object]$v) {
               if ($null -eq $v) { return "N/A" }
-              "$(if ($v -ge 0) { "(+$v%) 🟢" } else { "($v%) 🔴" })"
+              "$(if ($v -ge 0) { "+$v% 🟢" } else { "$v% 🔴" })"
           }
 
           function FmtArrow([object]$v) {
               if ($null -eq $v) { return "N/A" }
-              "$(if ($v -ge 0) { "(+$v%) ▲" } else { "($v%) ▼" })"
+              "$(if ($v -ge 0) { "+$v% ▲" } else { "$v% ▼" })"
           }
 
           function Get-Lines($IdxList) {
@@ -59,7 +59,7 @@ jobs:
                   try {
                       $d         = Get-IndexData $idx.Ticker $idx.Market
                       $Portfolio = if ($idx.Own) { '💼' } else { '' }
-                      $out   += "<b>$($idx.Name)</b> $($d.Current) $(if ($UsMarketOpen) { Fmt $d.DayPct } else { FmtArrow $d.DayPct }) $Portfolio"
+                      $out   += "<b>$($idx.Name)</b> $($d.Current) <b>$((if ($UsMarketOpen) { Fmt $d.DayPct } else { FmtArrow $d.DayPct }))</b> $Portfolio"
                   } catch {
                       $out   += "<b>$($idx.Name)</b> — unavailable ⚠️"
                       $out   += "<i>Error: $($_.Exception.Message)</i>"
@@ -81,7 +81,7 @@ jobs:
           }
           else {
               $lines += "<b>US</b> — Hourly update 📈"
-              $lines += "$($Now.ToString('yyyy-MM-dd HH:mm')) CET"
+              $lines += "<i>$($Now.ToString('yyyy-MM-dd HH:mm')) CET</i>"
               $lines += "<i>🇺🇸 $usStatus</i>"
               $lines += ""
               $lines += Get-Lines $Indices
