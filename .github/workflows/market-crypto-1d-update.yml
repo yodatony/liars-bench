@@ -85,8 +85,8 @@ jobs:
 
           $lines = @(
               "<b>CRYPTO</b> — Daily update 📈"
-              "<i>$Yesterday</i>"
               "<i>Previous day movement (UTC)</i>"
+              "<i>$Yesterday</i>"
               ""
           )
 
