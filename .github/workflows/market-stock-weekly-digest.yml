@@ -41,7 +41,7 @@ jobs:
           function Get-WeeklyData([string]$Ticker) {
               $Enc  = [Uri]::EscapeDataString($Ticker)
               $R    = Invoke-RestMethod `
-                          -Uri "https://api.twelvedata.com/time_series?symbol=$Enc&interval=1day&outputsize=22&apikey=$($env:TWELVEDATA_KEY)" `
+                          -Uri "https://api.twelvedata.com/time_series?symbol=$Enc&interval=1day&outputsize=253&apikey=$($env:TWELVEDATA_KEY)" `
                           -ErrorAction Stop
               if ($R.status -eq "error") { throw "Twelve Data: $($R.message)" }
               $Rows = @($R.values | ForEach-Object {
@@ -59,14 +59,16 @@ jobs:
               [PSCustomObject]@{
                   Close    = [math]::Round($Last, 2)
                   WeekPct  = Pct $WkAgo
-                  MonthPct = Pct ($N -ge 22 ? $Rows[21].close : $Rows[$N-1].close)
+                  MonthPct = Pct ($N -ge 22  ? $Rows[21].close  : $Rows[$N-1].close)
+                  SixMoPct = Pct ($N -ge 127 ? $Rows[126].close : $Rows[$N-1].close)
+                  YearPct  = Pct ($N -ge 253 ? $Rows[252].close : $Rows[$N-1].close)
               }
           }
 
           function Get-SeWeeklyData([string]$Ticker) {
               $Enc  = [Uri]::EscapeDataString($Ticker)
               $Raw  = Invoke-RestMethod `
-                          -Uri "https://eodhd.com/api/eod/$Enc`?api_token=$($env:EODHD_KEY)&fmt=json&order=d&limit=22" `
+                          -Uri "https://eodhd.com/api/eod/$Enc`?api_token=$($env:EODHD_KEY)&fmt=json&order=d&limit=253" `
                           -ErrorAction Stop
               if (-not $Raw -or $Raw.Count -eq 0) { throw "No data returned for $Ticker" }
               $Rows = @($Raw | ForEach-Object {
@@ -84,13 +86,15 @@ jobs:
               [PSCustomObject]@{
                   Close    = [math]::Round($Last, 2)
                   WeekPct  = Pct $WkAgo
-                  MonthPct = Pct ($N -ge 22 ? $Rows[21].close : $Rows[$N-1].close)
+                  MonthPct = Pct ($N -ge 22  ? $Rows[21].close  : $Rows[$N-1].close)
+                  SixMoPct = Pct ($N -ge 127 ? $Rows[126].close : $Rows[$N-1].close)
+                  YearPct  = Pct ($N -ge 253 ? $Rows[252].close : $Rows[$N-1].close)
               }
           }
 
           function Fmt([object]$v) {
               if ($null -eq $v) { return "N/A" }
-              "$(if ($v -ge 0) { "(+$v%) 🟢" } else { "($v%) 🔴" })"
+              "$(if ($v -ge 0) { "+$v% 🟢" } else { "$v% 🔴" })"
           }
 
           function FmtFlat([object]$v) {
@@ -100,8 +104,8 @@ jobs:
 
           $lines = @(
               "<b>STOCK</b> — Weekly digest 📊"
-              "Last 5 trading days"
-              "1M = 21"
+              "<i>Last 5 trading days</i>"
+              "<i>1M = 21 | 6M = 126 | 1Y = 252</i>"
               ""
           )
 
@@ -124,6 +128,8 @@ jobs:
                       Close    = $d.Close
                       WeekPct  = $d.WeekPct
                       MonthPct = $d.MonthPct
+                      SixMoPct = $d.SixMoPct
+                      YearPct  = $d.YearPct
                       Own      = $idx.Own
                   }
               } catch {
@@ -133,6 +139,8 @@ jobs:
                       Close    = $null
                       WeekPct  = $null
                       MonthPct = $null
+                      SixMoPct = $null
+                      YearPct  = $null
                       Own      = $idx.Own
                       Error    = $true
                   }
@@ -146,8 +154,8 @@ jobs:
               if ($r.Error) {
                   $lines += "<b>$($r.Flag) $($r.Name)</b> — unavailable ⚠️$Portfolio"
               } else {
-                  $lines += "<b>$($r.Flag) $($r.Name)</b> $($r.Close) $(Fmt $r.WeekPct) $Portfolio"
-                  $lines += "1M: $(FmtFlat $r.MonthPct)"
+                  $lines += "<b>$($r.Flag) $($r.Name)</b> $($r.Close) <b>$(Fmt $r.WeekPct)</b> $Portfolio"
+                  $lines += "<i>1M: $(FmtFlat $r.MonthPct) | 6M: $(FmtFlat $r.SixMoPct) | 1Y: $(FmtFlat $r.YearPct)</i>"
               }
           }
 
