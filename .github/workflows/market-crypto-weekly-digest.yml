@@ -20,14 +20,12 @@ jobs:
           $Now = [System.TimeZoneInfo]::ConvertTimeFromUtc([DateTime]::UtcNow, $TZ)
 
           $Indices = @(
-              @{ Name = "BNB/USD";   Ticker = "BNB/USD";  Market = "CRYPTO"; Own = $false }
-              @{ Name = "BTC/USD";   Ticker = "BTC/USD";  Market = "CRYPTO"; Own = $true  }
-              @{ Name = "ETH/USD";   Ticker = "ETH/USD";  Market = "CRYPTO"; Own = $true  }
+              @{ Name = "BNB/USD";   Ticker = "BNB/USD";   Market = "CRYPTO"; Own = $false }
+              @{ Name = "BTC/USD";   Ticker = "BTC/USD";   Market = "CRYPTO"; Own = $true  }
+              @{ Name = "ETH/USD";   Ticker = "ETH/USD";   Market = "CRYPTO"; Own = $true  }
               @{ Name = "HYPE/USDT"; Ticker = "HYPE/USDT"; Market = "CRYPTO"; Own = $true  }
-              @{ Name = "SOL/USD";   Ticker = "SOL/USD";  Market = "CRYPTO"; Own = $false }
-              @{ Name = "USDC/USD";  Ticker = "USDC/USD"; Market = "CRYPTO"; Own = $false }
-              @{ Name = "USDT/USD";  Ticker = "USDT/USD"; Market = "CRYPTO"; Own = $false }
-              @{ Name = "XRP/USD";   Ticker = "XRP/USD";  Market = "CRYPTO"; Own = $true  }
+              @{ Name = "SOL/USD";   Ticker = "SOL/USD";   Market = "CRYPTO"; Own = $false }
+              @{ Name = "XRP/USD";   Ticker = "XRP/USD";   Market = "CRYPTO"; Own = $true  }
           )
 
           function Get-CryptoWeeklyData([string]$Ticker) {
