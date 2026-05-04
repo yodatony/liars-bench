@@ -53,6 +53,7 @@ jobs:
           )
 
           foreach ($idx in $Indices) {
+              Start-Sleep -Seconds 3
               try {
                   $d         = Get-CoinGeckoData $idx.CoinId
                   $Portfolio = if ($idx.Own) { '💼' } else { '' }
