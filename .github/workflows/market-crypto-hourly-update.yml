@@ -12,19 +12,29 @@ jobs:
         env:
           TELEGRAM_TOKEN:   ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TWELVEDATA_KEY:   ${{ secrets.TWELVEDATA_KEY }}
         run: |
           $TZ  = [System.TimeZoneInfo]::FindSystemTimeZoneById('Europe/Stockholm')
           $Now = [System.TimeZoneInfo]::ConvertTimeFromUtc([DateTime]::UtcNow, $TZ)
-
           $Indices = @(
-              @{ Name = "BNB/USD";  CoinId = "binancecoin"; Own = $false }
-              @{ Name = "BTC/USD";  CoinId = "bitcoin";     Own = $true  }
-              @{ Name = "ETH/USD";  CoinId = "ethereum";    Own = $true  }
-              @{ Name = "HYPE/USD"; CoinId = "hyperliquid"; Own = $true  }
-              @{ Name = "SOL/USD";  CoinId = "solana";      Own = $false }
-              @{ Name = "XRP/USD";  CoinId = "ripple";      Own = $true  }
+              @{ Name = "BNB/USD";   Ticker = "BNB/USD";   Market = "CRYPTO"; Own = $false }
+              @{ Name = "BTC/USD";   Ticker = "BTC/USD";   Market = "CRYPTO"; Own = $true  }
+              @{ Name = "ETH/USD";   Ticker = "ETH/USD";   Market = "CRYPTO"; Own = $true  }
+              @{ Name = "HYPE/USD";  Ticker = "HYPE/USD";  Market = "CRYPTO"; Own = $true; Source = "COINGECKO"; CoinId = "hyperliquid" }
+              @{ Name = "SOL/USD";   Ticker = "SOL/USD";   Market = "CRYPTO"; Own = $false }
+              @{ Name = "XRP/USD";   Ticker = "XRP/USD";   Market = "CRYPTO"; Own = $true  }
           )
-
+          function Get-IndexData([string]$Ticker) {
+              $Enc = [Uri]::EscapeDataString($Ticker)
+              $R   = Invoke-RestMethod `
+                         -Uri "https://api.twelvedata.com/quote?symbol=$Enc&apikey=$($env:TWELVEDATA_KEY)" `
+                         -ErrorAction Stop
+              if ($R.status -eq "error") { throw "TwelveData: $($R.message)" }
+              [PSCustomObject]@{
+                  Current = [math]::Round([double]$R.close, 2)
+                  DayPct  = [math]::Round([double]$R.percent_change, 2)
+              }
+          }
           function Get-CoinGeckoData([string]$CoinId) {
               $FromUnix = [DateTimeOffset]::new([DateTime]::UtcNow.Date, [TimeSpan]::Zero).ToUnixTimeSeconds()
               $ToUnix   = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
@@ -39,23 +49,19 @@ jobs:
                   DayPct  = [math]::Round(($CurrentPrice - $OpenPrice) / $OpenPrice * 100, 2)
               }
           }
-
           function Fmt([object]$v) {
               if ($null -eq $v) { return "N/A" }
               "$(if ($v -ge 0) { "+$v% 🟢" } else { "$v% 🔴" })"
           }
-
           $lines = @(
               "<b>CRYPTO</b> — Hourly update 📈"
               "<i>$($Now.ToString('yyyy-MM-dd HH:mm')) CET</i>"
               "<i>💵 Open 24/7 🔔</i>"
               ""
           )
-
           foreach ($idx in $Indices) {
-              Start-Sleep -Seconds 3
               try {
-                  $d         = Get-CoinGeckoData $idx.CoinId
+                  $d         = if ($idx.Source -eq "COINGECKO") { Get-CoinGeckoData $idx.CoinId } else { Get-IndexData $idx.Ticker }
                   $Portfolio = if ($idx.Own) { '💼' } else { '' }
                   $lines += "<b>$($idx.Name)</b> ($($d.Current)) <b>$((Fmt $d.DayPct))</b> $Portfolio"
               } catch {
@@ -63,13 +69,11 @@ jobs:
                   $lines += "  <i>Error: $($_.Exception.Message)</i>"
               }
           }
-
           $body = @{
               chat_id    = $env:TELEGRAM_CHAT_ID
               text       = ($lines -join "`n")
               parse_mode = "HTML"
           } | ConvertTo-Json -Depth 3
-
           Invoke-RestMethod -Uri "https://api.telegram.org/bot$($env:TELEGRAM_TOKEN)/sendMessage" `
               -Method Post -Body $body -ContentType "application/json; charset=utf-8"
           Write-Host "Sent at $($Now.ToString('HH:mm')) CET"
