@@ -21,11 +21,11 @@ jobs:
           $Threshold  = 2.5
           $MarketClosed = $T -lt 930 -or $T -ge 1320  # US market open 15:30–22:00 CET
           $Indices = @(
-              @{ Name = "NVDA";     Ticker = "NVDA";  Market = "US"; Own = $false }
               @{ Name = "AAPL";     Ticker = "AAPL";  Market = "US"; Own = $false }
-              @{ Name = "MSFT";     Ticker = "MSFT";  Market = "US"; Own = $true  }
               @{ Name = "AMZN";     Ticker = "AMZN";  Market = "US"; Own = $false }
               @{ Name = "GOOGL";    Ticker = "GOOGL"; Market = "US"; Own = $false }
+              @{ Name = "MSFT";     Ticker = "MSFT";  Market = "US"; Own = $true  }
+              @{ Name = "NVDA";     Ticker = "NVDA";  Market = "US"; Own = $false }
               @{ Name = "TSLA";     Ticker = "TSLA";  Market = "US"; Own = $false }
           )
 
