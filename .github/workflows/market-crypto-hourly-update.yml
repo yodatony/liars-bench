@@ -21,15 +21,16 @@ jobs:
               @{ Name = "BNB/USD";   Ticker = "BNB/USD";   Market = "CRYPTO"; Own = $false }
               @{ Name = "BTC/USD";   Ticker = "BTC/USD";   Market = "CRYPTO"; Own = $true  }
               @{ Name = "ETH/USD";   Ticker = "ETH/USD";   Market = "CRYPTO"; Own = $true  }
-              @{ Name = "HYPE/USDT"; Ticker = "HYPE/USDT"; Market = "CRYPTO"; Own = $true  }
+              @{ Name = "HYPE/USDT"; Ticker = "HYPE/USDT"; Market = "CRYPTO"; Own = $true; Exchange = "KUCOIN" }
               @{ Name = "SOL/USD";   Ticker = "SOL/USD";   Market = "CRYPTO"; Own = $false }
               @{ Name = "XRP/USD";   Ticker = "XRP/USD";   Market = "CRYPTO"; Own = $true  }
           )
 
-          function Get-IndexData([string]$Ticker) {
+          function Get-IndexData([string]$Ticker, [string]$Exchange = "") {
               $Enc = [Uri]::EscapeDataString($Ticker)
+              $ExchangeParam = if ($Exchange) { "&exchange=$Exchange" } else { "" }
               $R   = Invoke-RestMethod `
-                         -Uri "https://api.twelvedata.com/quote?symbol=$Enc&apikey=$($env:TWELVEDATA_KEY)" `
+                         -Uri "https://api.twelvedata.com/quote?symbol=$Enc$ExchangeParam&apikey=$($env:TWELVEDATA_KEY)" `
                          -ErrorAction Stop
               if ($R.status -eq "error") { throw "TwelveData: $($R.message)" }
               [PSCustomObject]@{
@@ -52,7 +53,7 @@ jobs:
 
           foreach ($idx in $Indices) {
               try {
-                  $d         = Get-IndexData $idx.Ticker
+                  $d         = Get-IndexData $idx.Ticker ($idx.Exchange ?? "")
                   $Portfolio = if ($idx.Own) { '💼' } else { '' }
                   $lines += "<b>$($idx.Name)</b> ($($d.Current)) <b>$((Fmt $d.DayPct))</b> $Portfolio"
               } catch {
