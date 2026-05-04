@@ -23,7 +23,7 @@ jobs:
               @{ Name = "BNB/USD";   Ticker = "BNB/USD";   Market = "CRYPTO"; Own = $false }
               @{ Name = "BTC/USD";   Ticker = "BTC/USD";   Market = "CRYPTO"; Own = $true  }
               @{ Name = "ETH/USD";   Ticker = "ETH/USD";   Market = "CRYPTO"; Own = $true  }
-              @{ Name = "HYPE/USDT"; Ticker = "HYPE/USDT"; Market = "CRYPTO"; Own = $true  }
+              @{ Name = "HYPE/USD";  Ticker = "HYPE/USD";  Market = "CRYPTO"; Own = $true; Source = "COINGECKO"; CoinId = "hyperliquid" }
               @{ Name = "SOL/USD";   Ticker = "SOL/USD";   Market = "CRYPTO"; Own = $false }
               @{ Name = "XRP/USD";   Ticker = "XRP/USD";   Market = "CRYPTO"; Own = $true  }
           )
@@ -61,6 +61,34 @@ jobs:
               }
           }
 
+          function Get-CoinGeckoWeeklyData([string]$CoinId) {
+              $R = Invoke-RestMethod `
+                       -Uri "https://api.coingecko.com/api/v3/coins/$CoinId/market_chart?vs_currency=usd&days=366" `
+                       -ErrorAction Stop
+              $Points = @($R.prices | ForEach-Object {
+                  [PSCustomObject]@{
+                      Time  = [DateTimeOffset]::FromUnixTimeMilliseconds($_[0]).UtcDateTime
+                      Price = [double]$_[1]
+                  }
+              } | Sort-Object Time -Descending)
+              $N = $Points.Count
+              if ($N -eq 0) { throw "CoinGecko: no data for $CoinId" }
+              $LatestPrice = $Points[0].Price
+              $MondayPrice = ($Points | Where-Object { $_.Time.DayOfWeek -eq 'Monday' } | Select-Object -First 1).Price
+              if (-not $MondayPrice) { throw "CoinGecko: no Monday data for $CoinId" }
+              function Pct($From) {
+                  if (-not $From -or $From -eq 0) { return $null }
+                  [math]::Round(($LatestPrice - $From) / $From * 100, 2)
+              }
+              [PSCustomObject]@{
+                  Close    = [math]::Round($LatestPrice, 2)
+                  WeekPct  = Pct $MondayPrice
+                  MonthPct = Pct ($N -ge 31  ? $Points[30].Price  : $Points[$N-1].Price)
+                  SixMoPct = Pct ($N -ge 183 ? $Points[182].Price : $Points[$N-1].Price)
+                  YearPct  = Pct ($N -ge 366 ? $Points[365].Price : $Points[$N-1].Price)
+              }
+          }
+
           function Fmt([object]$v) {
               if ($null -eq $v) { return "N/A" }
               "$(if ($v -ge 0) { "+$v% 🟢" } else { "$v% 🔴" })"
@@ -82,7 +110,7 @@ jobs:
           foreach ($idx in $Indices) {
               $Flag = "💵"
               try {
-                  $d = Get-CryptoWeeklyData $idx.Ticker
+                  $d = if ($idx.Source -eq "COINGECKO") { Get-CoinGeckoWeeklyData $idx.CoinId } else { Get-CryptoWeeklyData $idx.Ticker }
                   $Results += [PSCustomObject]@{
                       Name     = $idx.Name
                       Flag     = $Flag
