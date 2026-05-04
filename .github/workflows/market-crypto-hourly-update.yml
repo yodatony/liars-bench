@@ -12,31 +12,18 @@ jobs:
         env:
           TELEGRAM_TOKEN:   ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          TWELVEDATA_KEY:   ${{ secrets.TWELVEDATA_KEY }}
         run: |
           $TZ  = [System.TimeZoneInfo]::FindSystemTimeZoneById('Europe/Stockholm')
           $Now = [System.TimeZoneInfo]::ConvertTimeFromUtc([DateTime]::UtcNow, $TZ)
 
           $Indices = @(
-              @{ Name = "BNB/USD";   Ticker = "BNB/USD";   Market = "CRYPTO"; Own = $false }
-              @{ Name = "BTC/USD";   Ticker = "BTC/USD";   Market = "CRYPTO"; Own = $true  }
-              @{ Name = "ETH/USD";   Ticker = "ETH/USD";   Market = "CRYPTO"; Own = $true  }
-              @{ Name = "HYPE/USD";  Ticker = "HYPE/USD";  Market = "CRYPTO"; Own = $true; Source = "COINGECKO"; CoinId = "hyperliquid" }
-              @{ Name = "SOL/USD";   Ticker = "SOL/USD";   Market = "CRYPTO"; Own = $false }
-              @{ Name = "XRP/USD";   Ticker = "XRP/USD";   Market = "CRYPTO"; Own = $true  }
+              @{ Name = "BNB/USD";  CoinId = "binancecoin"; Own = $false }
+              @{ Name = "BTC/USD";  CoinId = "bitcoin";     Own = $true  }
+              @{ Name = "ETH/USD";  CoinId = "ethereum";    Own = $true  }
+              @{ Name = "HYPE/USD"; CoinId = "hyperliquid"; Own = $true  }
+              @{ Name = "SOL/USD";  CoinId = "solana";      Own = $false }
+              @{ Name = "XRP/USD";  CoinId = "ripple";      Own = $true  }
           )
-
-          function Get-IndexData([string]$Ticker) {
-              $Enc = [Uri]::EscapeDataString($Ticker)
-              $R   = Invoke-RestMethod `
-                         -Uri "https://api.twelvedata.com/quote?symbol=$Enc&apikey=$($env:TWELVEDATA_KEY)" `
-                         -ErrorAction Stop
-              if ($R.status -eq "error") { throw "TwelveData: $($R.message)" }
-              [PSCustomObject]@{
-                  Current = [math]::Round([double]$R.close, 2)
-                  DayPct  = [math]::Round([double]$R.percent_change, 2)
-              }
-          }
 
           function Get-CoinGeckoData([string]$CoinId) {
               $FromUnix = [DateTimeOffset]::new([DateTime]::UtcNow.Date, [TimeSpan]::Zero).ToUnixTimeSeconds()
@@ -67,7 +54,7 @@ jobs:
 
           foreach ($idx in $Indices) {
               try {
-                  $d         = if ($idx.Source -eq "COINGECKO") { Get-CoinGeckoData $idx.CoinId } else { Get-IndexData $idx.Ticker }
+                  $d         = Get-CoinGeckoData $idx.CoinId
                   $Portfolio = if ($idx.Own) { '💼' } else { '' }
                   $lines += "<b>$($idx.Name)</b> ($($d.Current)) <b>$((Fmt $d.DayPct))</b> $Portfolio"
               } catch {
