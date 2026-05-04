@@ -109,6 +109,7 @@ jobs:
           $Results = @()
           foreach ($idx in $Indices) {
               $Flag = "💵"
+              if ($idx.Source -ne "COINGECKO") { Start-Sleep -Seconds 15 }
               try {
                   $d = if ($idx.Source -eq "COINGECKO") { Get-CoinGeckoWeeklyData $idx.CoinId } else { Get-CryptoWeeklyData $idx.Ticker }
                   $Results += [PSCustomObject]@{
