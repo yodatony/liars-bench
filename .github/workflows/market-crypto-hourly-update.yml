@@ -21,21 +21,35 @@ jobs:
               @{ Name = "BNB/USD";   Ticker = "BNB/USD";   Market = "CRYPTO"; Own = $false }
               @{ Name = "BTC/USD";   Ticker = "BTC/USD";   Market = "CRYPTO"; Own = $true  }
               @{ Name = "ETH/USD";   Ticker = "ETH/USD";   Market = "CRYPTO"; Own = $true  }
-              @{ Name = "HYPE/USDT"; Ticker = "HYPE/USDT"; Market = "CRYPTO"; Own = $true; Exchange = "KUCOIN" }
+              @{ Name = "HYPE/USD";  Ticker = "HYPE/USD";  Market = "CRYPTO"; Own = $true; Source = "COINGECKO"; CoinId = "hyperliquid" }
               @{ Name = "SOL/USD";   Ticker = "SOL/USD";   Market = "CRYPTO"; Own = $false }
               @{ Name = "XRP/USD";   Ticker = "XRP/USD";   Market = "CRYPTO"; Own = $true  }
           )
 
-          function Get-IndexData([string]$Ticker, [string]$Exchange = "") {
+          function Get-IndexData([string]$Ticker) {
               $Enc = [Uri]::EscapeDataString($Ticker)
-              $ExchangeParam = if ($Exchange) { "&exchange=$Exchange" } else { "" }
               $R   = Invoke-RestMethod `
-                         -Uri "https://api.twelvedata.com/quote?symbol=$Enc$ExchangeParam&apikey=$($env:TWELVEDATA_KEY)" `
+                         -Uri "https://api.twelvedata.com/quote?symbol=$Enc&apikey=$($env:TWELVEDATA_KEY)" `
                          -ErrorAction Stop
               if ($R.status -eq "error") { throw "TwelveData: $($R.message)" }
               [PSCustomObject]@{
                   Current = [math]::Round([double]$R.close, 2)
                   DayPct  = [math]::Round([double]$R.percent_change, 2)
+              }
+          }
+
+          function Get-CoinGeckoData([string]$CoinId) {
+              $FromUnix = [DateTimeOffset]::new([DateTime]::UtcNow.Date, [TimeSpan]::Zero).ToUnixTimeSeconds()
+              $ToUnix   = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+              $R = Invoke-RestMethod `
+                       -Uri "https://api.coingecko.com/api/v3/coins/$CoinId/market_chart/range?vs_currency=usd&from=$FromUnix&to=$ToUnix" `
+                       -ErrorAction Stop
+              if (-not $R.prices -or $R.prices.Count -lt 2) { throw "CoinGecko: not enough data for $CoinId" }
+              $OpenPrice    = [double]$R.prices[0][1]
+              $CurrentPrice = [double]$R.prices[-1][1]
+              [PSCustomObject]@{
+                  Current = [math]::Round($CurrentPrice, 4)
+                  DayPct  = [math]::Round(($CurrentPrice - $OpenPrice) / $OpenPrice * 100, 2)
               }
           }
 
@@ -53,7 +67,7 @@ jobs:
 
           foreach ($idx in $Indices) {
               try {
-                  $d         = Get-IndexData $idx.Ticker ($idx.Exchange ?? "")
+                  $d         = if ($idx.Source -eq "COINGECKO") { Get-CoinGeckoData $idx.CoinId } else { Get-IndexData $idx.Ticker }
                   $Portfolio = if ($idx.Own) { '💼' } else { '' }
                   $lines += "<b>$($idx.Name)</b> ($($d.Current)) <b>$((Fmt $d.DayPct))</b> $Portfolio"
               } catch {
