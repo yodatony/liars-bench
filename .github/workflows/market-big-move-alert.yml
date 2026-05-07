@@ -18,7 +18,7 @@ jobs:
           $Now    = [System.TimeZoneInfo]::ConvertTimeFromUtc([DateTime]::UtcNow, $TZ)
           $T      = $Now.Hour * 60 + $Now.Minute
 
-          $Threshold  = 2.5
+          $Threshold  = 3
           $MarketClosed = $T -lt 930 -or $T -ge 1320  # US market open 15:30–22:00 CET
           $Indices = @(
               @{ Name = "AAPL";     Ticker = "AAPL";  Market = "US"; Own = $false }
