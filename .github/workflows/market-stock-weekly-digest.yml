@@ -22,6 +22,7 @@ jobs:
 
           $Indices = @(
               @{ Name = "ATCO B";           Ticker = "ATCO-B.ST"; Market = "SE"; Own = $true  }
+              @{ Name = "LATO B";           Ticker = "LATO-B.ST"; Market = "SE"; Own = $false }
               @{ Name = "INVE B";           Ticker = "INVE-B.ST"; Market = "SE"; Own = $true  }
               @{ Name = "VOLV B";           Ticker = "VOLV-B.ST"; Market = "SE"; Own = $false }
               @{ Name = "SAAB B";           Ticker = "SAAB-B.ST"; Market = "SE"; Own = $false }
