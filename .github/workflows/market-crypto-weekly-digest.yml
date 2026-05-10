@@ -62,8 +62,10 @@ jobs:
           }
 
           function Get-CoinGeckoWeeklyData([string]$CoinId) {
+              $ToUnix   = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+              $FromUnix = [DateTimeOffset]::UtcNow.AddDays(-366).ToUnixTimeSeconds()
               $R = Invoke-RestMethod `
-                       -Uri "https://api.coingecko.com/api/v3/coins/$CoinId/market_chart?vs_currency=usd&days=366" `
+                       -Uri "https://api.coingecko.com/api/v3/coins/$CoinId/market_chart/range?vs_currency=usd&from=$FromUnix&to=$ToUnix" `
                        -ErrorAction Stop
               $Points = @($R.prices | ForEach-Object {
                   [PSCustomObject]@{
