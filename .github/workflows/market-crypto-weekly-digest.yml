@@ -123,6 +123,7 @@ jobs:
                       Own      = $idx.Own
                   }
               } catch {
+                  Write-Warning "[$($idx.Name)] $($_.Exception.Message)"
                   $Results += [PSCustomObject]@{
                       Name     = $idx.Name
                       Flag     = $Flag
@@ -133,6 +134,7 @@ jobs:
                       YearPct  = $null
                       Own      = $idx.Own
                       Error    = $true
+                      ErrorMsg = $_.Exception.Message
                   }
               }
           }
@@ -143,6 +145,7 @@ jobs:
               $Portfolio = if ($r.Own) { '💼' } else { '' }
               if ($r.Error) {
                   $lines += "<b>$($r.Flag) $($r.Name)</b> — unavailable ⚠️$Portfolio"
+                  $lines += "<i>Error: $($r.ErrorMsg)</i>"
               } else {
                   $lines += "<b>$($r.Flag) $($r.Name)</b> ($($r.Close)) <b>$(Fmt $r.WeekPct)</b> $Portfolio"
                   $lines += "<i>1M: $(FmtFlat $r.MonthPct) | 6M: $(FmtFlat $r.SixMoPct) | 1Y: $(FmtFlat $r.YearPct)</i>"
