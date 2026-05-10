@@ -62,10 +62,8 @@ jobs:
           }
 
           function Get-CoinGeckoWeeklyData([string]$CoinId) {
-              $ToUnix   = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
-              $FromUnix = [DateTimeOffset]::UtcNow.AddDays(-366).ToUnixTimeSeconds()
               $R = Invoke-RestMethod `
-                       -Uri "https://api.coingecko.com/api/v3/coins/$CoinId/market_chart/range?vs_currency=usd&from=$FromUnix&to=$ToUnix" `
+                       -Uri "https://api.coingecko.com/api/v3/coins/$CoinId/market_chart?vs_currency=usd&days=30" `
                        -ErrorAction Stop
               $Points = @($R.prices | ForEach-Object {
                   [PSCustomObject]@{
@@ -85,9 +83,9 @@ jobs:
               [PSCustomObject]@{
                   Close    = [math]::Round($LatestPrice, 2)
                   WeekPct  = Pct $MondayPrice
-                  MonthPct = Pct ($N -ge 31  ? $Points[30].Price  : $Points[$N-1].Price)
-                  SixMoPct = Pct ($N -ge 183 ? $Points[182].Price : $Points[$N-1].Price)
-                  YearPct  = Pct ($N -ge 366 ? $Points[365].Price : $Points[$N-1].Price)
+                  MonthPct = Pct ($N -ge 31 ? $Points[30].Price : $Points[$N-1].Price)
+                  SixMoPct = $null
+                  YearPct  = $null
               }
           }
 
