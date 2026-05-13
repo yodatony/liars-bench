@@ -37,6 +37,7 @@ jobs:
               @{ Name = "AMZN";             Ticker = "AMZN";      Market = "US"; Own = $false }
               @{ Name = "GOOGL";            Ticker = "GOOGL";     Market = "US"; Own = $false }
               @{ Name = "TSLA";             Ticker = "TSLA";      Market = "US"; Own = $false }
+              @{ Name = "NOW";     Ticker = "NOW"; Market = "US"; Own = $true  }
           )
 
           function Get-WeeklyData([string]$Ticker) {
