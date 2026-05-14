@@ -27,6 +27,7 @@ jobs:
               @{ Name = "MSFT";     Ticker = "MSFT";  Market = "US"; Own = $true  }
               @{ Name = "NVDA";     Ticker = "NVDA";  Market = "US"; Own = $false }
               @{ Name = "TSLA";     Ticker = "TSLA";  Market = "US"; Own = $false }
+              @{ Name = "NOW";     Ticker = "NOW"; Market = "US"; Own = $true  }
           )
 
           $Alerts = @()
