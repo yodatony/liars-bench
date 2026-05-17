@@ -108,7 +108,7 @@ jobs:
           $Yesterday     = "$YesterdayDay $YesterdayDate"
 
           $lines = @(
-              "<b>CRYPTO</b> — Daily update 📈"
+              "<b>CRYPTO</b> — Daily review 📈"
               "<i>Previous day movement (UTC)</i>"
               "<i>$Yesterday</i>"
               ""
