@@ -112,7 +112,7 @@ jobs:
                      Sort-Object -Property DayPct -Descending
 
           $lines = @(
-              "<b>STOCK</b> — Daily update 📈"
+              "<b>STOCK</b> — Daily review 📈"
               "<i>Previous trading day movement</i>"
               "<i>$Yesterday</i>"
               ""
