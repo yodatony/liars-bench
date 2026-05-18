@@ -3,7 +3,7 @@ name: market-crypto-1d-update
 on:
   workflow_dispatch:
   schedule:
-    - cron: '44 3 * * *'
+    - cron: '52 2 * * *'
 
 jobs:
   send-info:
