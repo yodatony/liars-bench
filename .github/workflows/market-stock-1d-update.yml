@@ -3,7 +3,7 @@ name: market-stock-1d-update
 on:
   workflow_dispatch:
   schedule:
-    - cron: '54 3 * * 2-6'
+    - cron: '58 2 * * 2-6'
 
 jobs:
   send-info:
