@@ -54,7 +54,7 @@ jobs:
               "$(if ($v -ge 0) { "+$v% 🟢" } else { "$v% 🔴" })"
           }
           $lines = @(
-              "<b>CRYPTO</b> — Hourly update 📈"
+              "<b>CRYPTO</b> — Intraday update 📈"
               "<i>$($Now.ToString('yyyy-MM-dd HH:mm')) CET</i>"
               "<i>💵 Open 24/7 🔔</i>"
               ""
