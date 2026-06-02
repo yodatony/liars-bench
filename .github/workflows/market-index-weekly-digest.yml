@@ -25,6 +25,7 @@ jobs:
               @{ Name = "OMXSGI";     Ticker = "OMXSGI.INDX"; Market = "SE" }
               @{ Name = "OMXS30";        Ticker = "OMXS30.INDX"; Market = "SE" }
               @{ Name = "S&P 500 (ETF)"; Ticker = "SPY";         Market = "US" }
+              @{ Name = "DJUS (ETF)";       Ticker = "IYY"; Market = "US" }
               @{ Name = "DJI (ETF)";     Ticker = "DIA";         Market = "US" }
           )
 
