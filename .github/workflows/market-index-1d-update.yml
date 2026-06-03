@@ -20,7 +20,7 @@ jobs:
 
           $Indices = @(
               @{ Name = "OMXSPI";     Ticker = "OMXSPI.INDX"; Market = "SE" }
-              @{ Name = "OMXSGI";     Ticker = "OMXSGI.INDX"; Market = "SE" }
+              @{ Name = "OMXS30GI";     Ticker = "OMXS30GI.INDX"; Market = "SE" }
               @{ Name = "OMXS30";     Ticker = "OMXS30.INDX"; Market = "SE" }
               @{ Name = "S&P 500 (ETF)";    Ticker = "SPY";         Market = "US" }
               @{ Name = "DJUS (ETF)";       Ticker = "IYY"; Market = "US" }
