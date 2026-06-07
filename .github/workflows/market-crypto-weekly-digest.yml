@@ -75,7 +75,7 @@ jobs:
               if ($N -eq 0) { throw "CoinGecko: no data for $CoinId" }
               $LatestPrice = $Points[0].Price
               $MondayPrice = ($Points | Where-Object { $_.Time.DayOfWeek -eq 'Monday' } | Select-Object -First 1).Price
-              $ThirtyDaysAgo = [DateTime]::UtcNow.AddDays(-30)
+              $ThirtyDaysAgo = [DateTime]::UtcNow.AddDays(-31)
               $MonthPoint = ($Points | Where-Object { $_.Time -le $ThirtyDaysAgo } | Select-Object -First 1)
               if (-not $MondayPrice) { throw "CoinGecko: no Monday data for $CoinId" }
               function Pct($From) {
