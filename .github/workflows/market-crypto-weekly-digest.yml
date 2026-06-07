@@ -63,7 +63,7 @@ jobs:
 
           function Get-CoinGeckoWeeklyData([string]$CoinId) {
               $R = Invoke-RestMethod `
-                       -Uri "https://api.coingecko.com/api/v3/coins/$CoinId/market_chart?vs_currency=usd&days=30" `
+                       -Uri "https://api.coingecko.com/api/v3/coins/$CoinId/market_chart?vs_currency=usd&days=31" `
                        -ErrorAction Stop
               $Points = @($R.prices | ForEach-Object {
                   [PSCustomObject]@{
