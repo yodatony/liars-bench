@@ -83,7 +83,9 @@ jobs:
               [PSCustomObject]@{
                   Close    = [math]::Round($LatestPrice, 2)
                   WeekPct  = Pct $MondayPrice
-                  MonthPct = Pct ($N -ge 31 ? $Points[30].Price : $Points[$N-1].Price)
+                  $ThirtyDaysAgo = [DateTime]::UtcNow.AddDays(-30)
+                  $MonthPoint = ($Points | Where-Object { $_.Time -le $ThirtyDaysAgo } | Select-Object -First 1)
+                  MonthPct = Pct ($MonthPoint ? $MonthPoint.Price : $Points[$N-1].Price)
                   SixMoPct = $null
                   YearPct  = $null
               }
