@@ -1,7 +1,6 @@
-# market-big-move-alert
-
-> **Last reviewed:** 2026-04-21  
-> **Workflow file:** [`.github/workflows/market-big-move-alert.yml`](../../.github/workflows/market-big-move-alert.yml)
+# Workflow documentation: market-big-move-alert
+**Workflow file:** [.github/workflows/market-big-move-alert.yml](../../.github/workflows/market-big-move-alert.yml)  
+**Last reviewed date:** 2026-05-01
 
 ---
 
@@ -12,8 +11,6 @@
 | Trigger               | Details                                                 |
 |----------------------|---------------------------------------------------------|
 | `workflow_dispatch`   | Manual trigger from the GitHub Actions UI               |
-
-> Intended to be triggered on a schedule during market hours. No `schedule` cron is currently configured.
 
 ### Required Secrets
 
@@ -27,7 +24,7 @@
 
 | Variable   | Value | Meaning                                                   |
 |------------|-------|-----------------------------------------------------------|
-| `$Threshold` | `2.0` | Minimum absolute % move from previous close to trigger an alert |
+| `$Threshold` | `2.5` | Minimum absolute % move from previous close to trigger an alert |
 
 ### Tracked Instruments
 
@@ -67,7 +64,7 @@ Uses TwelveData `/quote` endpoint — returns real-time `percent_change` from th
 Find and update `$Threshold` at the top of the `run` block:
 
 ```powershell
-$Threshold = 2.0   # Change this value
+$Threshold = 2.5   # Change this value
 ```
 
 ### How to add a ticker
@@ -103,4 +100,4 @@ US equities have defined trading sessions. Crypto trades continuously with no se
 
 ### Why `[math]::Abs($Pct)` is used
 
-The threshold check uses the absolute value so that both rallies (+2%) and selloffs (-2%) trigger an alert equally. The sign only affects the display emoji (🟢 for positive, 🔴 for negative).
+The threshold check uses the absolute value so that both rallies (+2.5%) and selloffs (-2.5%) trigger an alert equally. The sign only affects the display emoji (🟢 for positive, 🔴 for negative).
