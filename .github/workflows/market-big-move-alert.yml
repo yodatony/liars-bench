@@ -17,6 +17,7 @@ jobs:
           $TZ     = [System.TimeZoneInfo]::FindSystemTimeZoneById('Europe/Stockholm')
           $Now    = [System.TimeZoneInfo]::ConvertTimeFromUtc([DateTime]::UtcNow, $TZ)
           $T      = $Now.Hour * 60 + $Now.Minute
+          $Dow    = $Now.DayOfWeek.ToString()
 
           $Threshold  = 3
           $MarketClosed = $T -lt 930 -or $T -ge 1320  # US market open 15:30–22:00 CET
@@ -30,6 +31,7 @@ jobs:
               @{ Name = "NOW";     Ticker = "NOW"; Market = "US"; Own = $true  }
           )
 
+          $CandleDate = $null
           $Alerts = @()
           foreach ($idx in $Indices) {
               try {
@@ -38,21 +40,24 @@ jobs:
                               -Uri "https://api.twelvedata.com/quote?symbol=$Enc&apikey=$($env:TWELVEDATA_KEY)" `
                               -ErrorAction Stop
                   if ($R.status -eq "error") { throw "Twelve Data: $($R.message)" }
+                  if (-not $CandleDate) { $CandleDate = $R.datetime.Substring(0, 10) }
                   $Pct   = [math]::Round([double]$R.percent_change, 2)
                   $Price = [math]::Round([double]$R.close, 2)
 
                   if ([math]::Abs($Pct) -ge $Threshold) {
                       $Portfolio = if ($idx.Own) { '💼' } else { '' }
-                      $Arrow     = if ($MarketClosed) {
-                                       if ($Pct -ge 0) { "+$Pct% ▲" } else { "$Pct% ▼" }
-                                   } else {
-                                       if ($Pct -ge 0) { "+$Pct% 🟢" } else { "$Pct% 🔴" }
-                                   }
+                      $Arrow     = if ($Pct -ge 0) { "+$Pct% 🟢" } else { "$Pct% 🔴" }
                       $Alerts   += "<b>$($idx.Name)</b> ($Price) <b>$Arrow</b> $Portfolio"
                   }
               } catch {
                   Write-Warning "Failed $($idx.Name): $_"
               }
+          }
+
+          $TodayDate = $Now.ToString("yyyy-MM-dd")
+          if ($CandleDate -and $CandleDate -ne $TodayDate) {
+              Write-Host "No trading today ($CandleDate), skipping."
+              exit 0
           }
 
           if ($Alerts.Count -eq 0) { Write-Host "No big moves detected."; exit 0 }
