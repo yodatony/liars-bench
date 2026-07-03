@@ -56,7 +56,7 @@ jobs:
 
           $TodayDate = $Now.ToString("yyyy-MM-dd")
           if ($CandleDate -and $CandleDate -ne $TodayDate) {
-              Write-Host "No trading today ($CandleDate), skipping."
+              Write-Host "No trading today ($TodayDate), skipping."
               exit 0
           }
 
