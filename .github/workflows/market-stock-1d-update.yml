@@ -26,7 +26,7 @@ jobs:
               @{ Name = "SAAB B";  Ticker = "SAAB-B.ST";  Market = "SE"; Own = $false }
               @{ Name = "SWED A";  Ticker = "SWED-A.ST";  Market = "SE"; Own = $false }
               @{ Name = "SHB A";   Ticker = "SHB-A.ST";   Market = "SE"; Own = $false }
-              @{ Name = "SBB B";   Ticker = "SBB-B.ST";   Market = "SE"; Own = $false }
+              @{ Name = "SEB A";   Ticker = "SEB-A.ST";   Market = "SE"; Own = $true }
               @{ Name = "SSAB B";  Ticker = "SSAB-B.ST";  Market = "SE"; Own = $false }
               @{ Name = "Novo B";  Ticker = "NOVO-B.CO";  Market = "DK"; Own = $true  }
               @{ Name = "NVDA";    Ticker = "NVDA";       Market = "US"; Own = $false }
