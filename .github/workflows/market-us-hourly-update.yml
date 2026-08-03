@@ -31,6 +31,7 @@ jobs:
               @{ Name = "S&P 500 (ETF)"; Ticker = "SPY";  Market = "US"; Own = $false }
               @{ Name = "MSFT";     Ticker = "MSFT"; Market = "US"; Own = $true  }
               @{ Name = "NOW";     Ticker = "NOW"; Market = "US"; Own = $true  }
+              @{ Name = "TSLA";             Ticker = "TSLA";      Market = "US"; Own = $true }
           )
 
           function Get-IndexData([string]$Ticker, [string]$Market) {
