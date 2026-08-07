@@ -1,7 +1,6 @@
-# market-index-weekly-digest
-
-> **Last reviewed:** 2026-04-21
-> **Workflow file:** [`.github/workflows/market-index-weekly-digest.yml`](../../.github/workflows/market-index-weekly-digest.yml)
+# Workflow documentation: market-index-weekly-digest
+**Workflow file:** [.github/workflows/market-index-weekly-digest.yml](../../.github/workflows/market-index-weekly-digest.yml)  
+**Last reviewed date:** 2026-05-01  
 
 ---
 
@@ -38,6 +37,7 @@
 |---------|--------------------------------------------------|
 | Close   | Last available daily closing price               |
 | WeekPct | % change vs close 5 trading days ago            |
+| MonthPct | % change vs close 22 trading days ago          |
 
 ### Data Sources
 
