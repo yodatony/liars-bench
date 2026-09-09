@@ -26,7 +26,7 @@ jobs:
               @{ Name = "AMZN";     Ticker = "AMZN";  Market = "US"; Own = $false }
               @{ Name = "GOOGL";    Ticker = "GOOGL"; Market = "US"; Own = $false }
               @{ Name = "MSFT";     Ticker = "MSFT";  Market = "US"; Own = $true  }
-              @{ Name = "NVDA";     Ticker = "NVDA";  Market = "US"; Own = $false }
+              @{ Name = "AVGO";     Ticker = "AVGO";  Market = "US"; Own = $false }
               @{ Name = "TSLA";     Ticker = "TSLA";  Market = "US"; Own = $true }
               @{ Name = "NOW";     Ticker = "NOW"; Market = "US"; Own = $true  }
           )
