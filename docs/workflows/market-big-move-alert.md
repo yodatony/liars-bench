@@ -1,58 +1,47 @@
-# market-big-move-alert
-
-> **Last reviewed:** 2026-04-21  
-> **Workflow file:** [`.github/workflows/market-big-move-alert.yml`](../../.github/workflows/market-big-move-alert.yml)
-
----
+# Workflow documentation: market-big-move-alert
+**Workflow file:** [.github/workflows/market-big-move-alert.yml](../../.github/workflows/market-big-move-alert.yml)
+**Last reviewed date:** 2026-10-02
 
 ## Reference
 
 ### Triggers
 
-| Trigger               | Details                                                 |
-|----------------------|---------------------------------------------------------|
-| `workflow_dispatch`   | Manual trigger from the GitHub Actions UI               |
-
-> Intended to be triggered on a schedule during market hours. No `schedule` cron is currently configured.
+| Trigger | Details |
+| :--- | :--- |
+| `workflow_dispatch` | Triggered externally on schedule via cron-job.org |
 
 ### Required Secrets
 
-| Secret              | Purpose                               |
-|---------------------|---------------------------------------|
-| `TELEGRAM_TOKEN`    | Bot token for the Telegram API       |
-| `TELEGRAM_CHAT_ID`  | Target chat or channel ID             |
-| `TWELVEDATA_KEY`    | API key for TwelveData market data    |
+| Secret | Purpose |
+| :--- | :--- |
+| `TELEGRAM_TOKEN` | Bot token for the Telegram API |
+| `TELEGRAM_CHAT_ID` | Target chat or channel ID |
+| `TWELVEDATA_KEY` | API key for TwelveData market data |
 
 ### Alert Threshold
 
-| Variable   | Value | Meaning                                                   |
-|------------|-------|-----------------------------------------------------------|
-| `$Threshold` | `2.0` | Minimum absolute % move from previous close to trigger an alert |
+| Variable | Value | Meaning |
+| :--- | :--- | :--- |
+| `$Threshold` | `3` | Minimum absolute % move from previous close to trigger an alert |
 
 ### Tracked Instruments
 
-| Flag | Name      | Ticker      | Market   | Own   |
-|------|-----------|-------------|----------|-------|
-| 🇺🇸   | NVIDIA    | `NVDA`      | US       | false |
-| 🇺🇸   | Apple     | `AAPL`      | US       | false |
-| 🇺🇸   | Microsoft | `MSFT`      | US       | true  |
-| 🇺🇸   | Amazon    | `AMZN`      | US       | false |
-| 🇺🇸   | Google A  | `GOOGL`     | US       | false |
-| 🇺🇸   | Tesla     | `TSLA`      | US       | false |
+| Name | Ticker | Market | Own |
+| :--- | :--- | :--- | :--- |
+| AAPL | `AAPL` | US | `false` |
+| AMZN | `AMZN` | US | `false` |
+| GOOGL | `GOOGL` | US | `false` |
+| MSFT | `MSFT` | US | `true` |
+| AVGO | `AVGO` | US | `true` |
+| TSLA | `TSLA` | US | `true` |
+| NOW | `NOW` | US | `true` |
 
-### Market Hours Filtering
+### API / Data Sources
 
-US stocks are only checked during active market hours. Tickers outside their market window are silently skipped — no API call is made and no alert fires.
-
-| Market | Checked during (CET) | Weekends |
-|--------|-----------------------|----------|
-| US     | Mon–Fri 15:30–22:00   | Skipped  |
-
-### API Endpoint
-
-Uses TwelveData `/quote` endpoint — returns real-time `percent_change` from the previous close.
-
----
+| Source | Endpoint / Method | Purpose |
+| :--- | :--- | :--- |
+| TwelveData | `https://api.twelvedata.com/quote` (GET) | Fetches real-time quote data, percent change, and close price |
+| Telegram | `https://api.telegram.org/bot<TOKEN>/sendMessage` (POST) | Sends formatted HTML alert messages to the configured chat |
 
 ## How-to Guides
 
@@ -67,15 +56,15 @@ Uses TwelveData `/quote` endpoint — returns real-time `percent_change` from th
 Find and update `$Threshold` at the top of the `run` block:
 
 ```powershell
-$Threshold = 2.0   # Change this value
+$Threshold  = 3   # Change this value
 ```
 
 ### How to add a ticker
 
-Add a new entry to `$Indices`:
+Add a new entry to the `$Indices` array:
 
 ```powershell
-@{ Name = "Your Name"; Ticker = "TICK"; Market = "US"; Own = $false }
+@{ Name = "TICKER"; Ticker = "TICKER"; Market = "US"; Own = $false }
 ```
 
 ### How to add a scheduled trigger
@@ -89,8 +78,6 @@ on:
     - cron: '*/30 15-22 * * 1-5'   # Every 30 min during US market hours (UTC)
 ```
 
----
-
 ## Explanation
 
 ### Why the market hours check exists
@@ -103,4 +90,4 @@ US equities have defined trading sessions. Crypto trades continuously with no se
 
 ### Why `[math]::Abs($Pct)` is used
 
-The threshold check uses the absolute value so that both rallies (+2%) and selloffs (-2%) trigger an alert equally. The sign only affects the display emoji (🟢 for positive, 🔴 for negative).
+The threshold check uses the absolute value so that both rallies (+3%) and selloffs (-3%) trigger an alert equally. The sign only affects the display emoji (🟢 for positive, 🔴 for negative).
