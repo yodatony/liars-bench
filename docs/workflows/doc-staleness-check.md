@@ -1,57 +1,64 @@
 # Workflow documentation: doc-staleness-check
-**Workflow file:** [.github/workflows/doc-staleness-check.yml](../../.github/workflows/doc-staleness-check.yml)  
-**Last reviewed date:** 2026-04-21
+**Workflow file:** [.github/workflows/doc-staleness-check.yml](../../.github/workflows/doc-staleness-check.yml)
+**Last reviewed date:** 2026-10-02
 
 ## Reference
 
 ### Triggers
 
-| Trigger Type       | Schedule Expression  |
-|---------------------|---------------------|
-| Manual Trigger      | `workflow_dispatch` |
-| Scheduled Trigger    | `55 2 1 * *` (1st of every month at 02:55 UTC) |
+| Trigger Type | Schedule Expression / Event | Description |
+|---|---|---|
+| Manual Trigger | `workflow_dispatch` | Allows manual triggering via GitHub Actions UI or API. |
+| Scheduled Trigger | `55 2 1 * *` | Runs automatically on the 1st of every month at 02:55 UTC. |
 
 ### Secrets
 
-| Secret Name        | Purpose                   |
-|--------------------|---------------------------|
-| `GITHUB_TOKEN`     | Provides access to GitHub API for actions like creating PRs and accessing repository content. |
+| Secret Name | Purpose |
+|---|---|
+| `GITHUB_TOKEN` | Provides access to repository content, commit history, and GitHub CLI operations for creating branches and pull requests. |
+| `GEMINI_API_KEY` | Authenticates requests to Google's Gemini API (`gemini-3.8-flash`) for rewriting or generating documentation. |
 
 ### Tickers/Instruments Table
 
-| No. | Ticker     | Description               |
-|-----|------------|---------------------------|
-| N/A | N/A        | The workflow does not operate on specific financial instruments. |
+| Ticker | Instrument Type | Description |
+|---|---|---|
+| N/A | N/A | This workflow does not process or monitor financial tickers or market instruments. |
 
 ### Output Fields
 
-| Field               | Description                                       |
-|---------------------|---------------------------------------------------|
-| `PR Title`          | Title of the pull request created for documentation updates. |
-| `Doc Last Changed`  | Date of the last commit for the documentation file. |
-| `Workflow Last Changed` | Date of the last commit for the workflow file. |
-| `Is Stale`          | Boolean value indicating if the documentation is stale compared to the workflow file. |
+| Field | Description |
+|---|---|
+| `BranchName` | Name of the generated branch (`doc-update/<WorkflowName>-<YYYYMMDD>`). |
+| `PR Title` | Title of the pull request created (`📝 Doc update: <WorkflowName>` or `📝 New doc: <WorkflowName>`). |
+| `PR Body` | Body text including comparison dates, instructions, and recent workflow commit logs. |
+| `WorkflowDate` | Timestamp of the last Git commit modifying the workflow file. |
+| `DocDate` | Timestamp of the last Git commit modifying the corresponding documentation file. |
+| `IsStale` | Boolean indicating whether the documentation is missing or older than the workflow file. |
 
 ### API/Data Sources
 
-- GitHub API (for repository actions and pull request management).
-- GitHub Models API (for generating updates to the documentation).
+| API / Data Source | Purpose |
+|---|---|
+| GitHub CLI (`gh`) / Git | Inspects open pull requests, checks commit logs, creates branches, commits documentation changes, and opens pull requests. |
+| Google Gemini API | OpenAI-compatible completions endpoint (`gemini-3.8-flash`) used to analyze workflow changes and generate or update Diataxis-formatted documentation. |
 
 ## How-to guides
 
 ### Creating or Updating Documentation
 
 1. **Trigger the Workflow**:
-   - Manually trigger the workflow using the GitHub Actions interface or wait for the scheduled trigger.
-   
-2. **Check for Staleness**:
-   - The workflow checks the last commit dates of the `.github/workflows/doc-staleness-check.yml` file and its corresponding documentation file in `docs/workflows/`.
+   - Manually trigger the workflow using the GitHub Actions interface or wait for the scheduled monthly run.
 
-3. **Create/Update Documentation**:
-   - If the workflow file has a newer commit than the documentation file, a new branch is created, and the documentation is generated and committed to the repository.
+2. **Check for Staleness**:
+   - The workflow iterates over all `.github/workflows/*.yml` files and checks the last commit date against their corresponding documentation files in `docs/workflows/`.
+
+3. **Generate Documentation via Gemini**:
+   - If the workflow file has a newer commit than the documentation file (or documentation does not exist) and no open PR exists for it, the workflow sends the workflow file, existing doc, and recent commit history to the Gemini API (`gemini-3.8-flash`).
+   - If Gemini returns a transient error (such as 429, 500, or 503), the workflow retries up to 5 times with exponential backoff.
 
 4. **Review and Merge the Pull Request**:
-   - Review the automatically generated pull request that the workflow creates, then merge it to incorporate the updated documentation.
+   - The workflow commits the generated documentation to a branch named `doc-update/<WorkflowName>-<YYYYMMDD>` and opens a pull request labeled `documentation`.
+   - Maintainers can review the generated pull request against the workflow changes and merge or request edits.
 
 ### Reviewing the PR
 
@@ -62,12 +69,8 @@
 
 ## Explanation
 
-The `doc-staleness-check` workflow is designed to ensure that documentation remains up-to-date with the corresponding workflow files within the repository. By checking the commit history, the workflow automatically identifies when the workflow files are updated and generates or modifies documentation accordingly. It leverages the GitHub Models API to assist in updating documentation content while maintaining the integrity and accuracy of the workflows.
+The `doc-staleness-check` workflow is designed to ensure that workflow documentation in `docs/workflows/` remains up-to-date with corresponding workflow files in `.github/workflows/`. 
 
-The workflow operates on a defined schedule and supports manual triggering. It utilizes GitHub Actions' permissions to interact with the repository contents and create pull requests. This structured approach helps to keep the documentation relevant, reduces manual overhead for maintainers, and improves overall repository quality.
+By comparing Git commit timestamps between each workflow and its corresponding markdown document, the workflow identifies stale or missing documentation. To avoid duplicate pull requests, it checks whether an open PR already exists for the given workflow before proceeding.
 
-## Recent commits to the workflow since the doc was last updated
-
-- ed40991 bug fix
-- e6ff82e changed prompt slightly
-- 698b8bc changed prompt to create a link
+When a workflow requires documentation updates, it sends the workflow content, previous documentation, and recent commit logs to Google's Gemini API (`gemini-3.8-flash`) using an OpenAI-compatible endpoint. The prompt instructs the model to follow the Diataxis framework (Reference, How-to guides, and Explanation) and preserve existing contextual information while bringing reference tables and descriptions into alignment with the workflow definition. Exponential backoff retry logic is implemented to handle intermittent rate limits or high-demand service responses (503/429).
