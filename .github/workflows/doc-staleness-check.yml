@@ -57,12 +57,21 @@ jobs:
 
               if (-not $IsStale) { continue }
 
-              # If a PR is already open for this doc, refresh it instead of creating a duplicate
+              # If a PR is already open for this doc, only refresh it if the workflow changed
+              # since the PR branch's own last commit (not just since main's unmerged doc)
               $ExistingPR = $OpenPRs | Where-Object { $_.headRefName -like "doc-update/$WorkflowName-*" } | Select-Object -First 1
 
               if ($ExistingPR) {
-                  $BranchName = $ExistingPR.headRefName
-                  Write-Host "  Open PR #$($ExistingPR.number) already exists, refreshing it instead of creating a new one."
+                  $BranchName   = $ExistingPR.headRefName
+                  git fetch origin $BranchName 2>$null
+                  $PRBranchDate = git log -1 --format="%ci" "origin/$BranchName" 2>$null
+
+                  if ($PRBranchDate -and [datetime]$WorkflowDate -le [datetime]$PRBranchDate) {
+                      Write-Host "  Open PR #$($ExistingPR.number) is already up to date, skipping."
+                      continue
+                  }
+
+                  Write-Host "  Open PR #$($ExistingPR.number) exists but the workflow changed since its last update, refreshing it."
               } else {
                   $BranchName = "doc-update/$WorkflowName-$(Get-Date -Format 'yyyyMMdd-HHmm')"
               }
@@ -167,11 +176,10 @@ jobs:
               # Create/refresh branch, commit, open PR (or comment on the existing one)
               $DocExists  = Test-Path $DocFile
               $Action     = if ($DocExists) { "update" } else { "create" }
-              $CommitMsg  = if ($ExistingPR) { "docs: refresh $DocFile (workflow changed again since PR was opened)" } elseif ($DocExists) { "docs: auto-update $DocFile (workflow changed since last doc edit)" } else { "docs: create $DocFile" }
+              $CommitMsg  = if ($ExistingPR) { "docs: refresh $DocFile (workflow changed since this PR was last updated)" } elseif ($DocExists) { "docs: auto-update $DocFile (workflow changed since last doc edit)" } else { "docs: create $DocFile" }
               $PRTitle    = if ($DocExists) { "📝 Doc update: $WorkflowName" } else { "📝 New doc: $WorkflowName" }
 
               if ($ExistingPR) {
-                  git fetch origin $BranchName
                   git checkout -B $BranchName "origin/$BranchName"
               } else {
                   git checkout main
@@ -186,7 +194,7 @@ jobs:
 
               if ($ExistingPR) {
                   $CommentBodyLines = @(
-                      "🔄 Documentation regenerated - the workflow changed again since this PR was opened.",
+                      "🔄 Documentation regenerated - the workflow changed since this PR was last updated.",
                       "",
                       "| | Date |",
                       "|---|---|",
