@@ -103,22 +103,24 @@ jobs:
 
               # Call Gemini's free, OpenAI-compatible API (GitHub Models was retired 2026-07-30)
               $DocContext = if ($CurrentDoc) {
-                  "You are updating an existing documentation file. Preserve all existing Explanation and How-to content unless the workflow makes it incorrect."
+                  "You are updating an existing documentation file. Preserve all existing Tutorials, Explanation and How-to content unless the workflow makes it incorrect."
               } else {
-                  "You are creating a new documentation file from scratch. Write complete Explanation and How-to sections based on the workflow."
+                  "You are creating a new documentation file from scratch. Write complete Tutorials, Explanation and How-to sections based on the workflow."
               }
               $PromptLines = @(
                   "You are a technical writer. $DocContext",
                   "",
-                  "Follow the Diataxis framework with these four sections:",
-                  "1. Reference - triggers, secrets, tickers/instruments table, output fields, API/data sources",
+                  "Follow the Diataxis framework with these four sections, in this order:",
+                  "1. Tutorials - a step-by-step walkthrough for a first-time user to get the workflow running end-to-end",
                   "2. How-to guides - step-by-step instructions for common tasks",
-                  "3. Explanation - design decisions and reasoning",
+                  "3. Reference - triggers, secrets, tickers/instruments table, output fields, API/data sources",
+                  "4. Explanation - design decisions and reasoning",
                   "",
                   "Rules:",
                   "- The document must start with: '# Workflow documentation: <Workflow Display Name>'",
                   "- Line 2 must be exactly: **Workflow file:** [.github/workflows/$WorkflowName.yml](../../.github/workflows/$WorkflowName.yml)",
                   "- Line 3 must be exactly: **Last reviewed date:** $Today",
+                  "- After line 3, add a '## Intro' section with a 2-3 sentence summary explaining what the workflow does and why it exists",
                   "- Use markdown tables for all lists of items (triggers, secrets, fields, tickers, etc.)",
                   "- Create/update all Reference tables to exactly match the current workflow file",
                   "- Do not add commentary or preamble - output only the raw markdown document",
