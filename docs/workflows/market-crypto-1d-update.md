@@ -22,61 +22,60 @@
 | BNB/USD | BNB/USD | CRYPTO | `false` | Twelve Data (default) | — |
 | BTC/USD | BTC/USD | CRYPTO | `true` | Twelve Data (default) | — |
 | ETH/USD | ETH/USD | CRYPTO | `true` | Twelve Data (default) | — |
-| HYPE/USD | HYPE/USD | CRYPTO | `true` | `COINGECKO` | `hyperliquid` |
-| SOL/USD | SOL/USD | CRYPTO | `true` (Wait: `false` in code) | Twelve Data (default) | — |
-| XRP/USD | XRP/USD | CRYpto | `true` | Twelve Data (default) | — |
-
-*(Note: SOL/USD `Own` is set to `$false` in the underlying workflow array).*
-
-### Output Fields
-| Field | Description |
-| :--- | :--- |
-| `Name` | The display name / ticker symbol of the crypto asset. |
-| `Flag` | Emoji indicator representing the market type (💵 for CRYPTO). |
-| `Close` | Rounded closing price of the asset for the previous day. |
-| `DayPct` | Calculated percentage change compared to the day before, formatted with 🟢/🔴 indicators. |
-| `Date` | The calendar date of the evaluated previous day (YYYY-MM-DD). |
-| `Own` | Boolean flag indicating whether the asset is held in the portfolio (marked with 💼). |
-| `Error` | Boolean flag set to `true` if data retrieval fails, rendering the asset as unavailable ⚠️. |
+| HYPE/USD | HYPE/USD | CRYPTO | `true` | COINGECKO | `hyperliquid` |
+| SOL/USD | SOL/USD | CRYPTO | `false` | Twelve Data (default) | — |
+| XRP/USD | XRP/USD | CRYPTO | `true` | Twelve Data (default) | — |
 
 ### API / Data Sources
-| Provider | Endpoint | Purpose |
+| Provider | Base Endpoint | Purpose |
 | :--- | :--- | :--- |
-| Twelve Data | `https://api.twelvedata.com/time_series` | Fetches daily historical time series data for standard crypto pairs. |
-| CoinGecko | `https://api.coingecko.com/api/v3/coins/{id}/market_chart` | Fetches historical price points for assets requiring alternative sources (e.g., HYPE/USD). |
-| Telegram Bot API | `https://api.telegram.org/bot{token}/sendMessage` | Delivers the compiled daily performance digest to the specified chat ID. |
+| **Twelve Data** | `https://api.twelvedata.com/time_series` | Retrieves daily historical closing prices for standard crypto pairs. |
+| **CoinGecko** | `https://api.coingecko.com/api/v3/coins/{id}/market_chart` | Retrieves hourly/daily historical price points for assets requiring custom data tracking (e.g., Hyperliquid). |
+| **Telegram Bot API** | `https://api.telegram.org/bot{token}/sendMessage` | Delivers the formatted HTML summary payload to the designated chat ID. |
+
+### Output Fields
+| Field Name | Description |
+| :--- | :--- |
+| `Name` | The display name/symbol of the instrument. |
+| `Flag` | Emoji indicator representing the market category (`💵` for crypto). |
+| `Close` | The rounded closing price for the previous completed day. |
+| `DayPct` | Percentage price change compared to the day prior, rounded to 2 decimal places. |
+| `Date` | The calendar date of the evaluated closing price (`YYYY-MM-DD`). |
+| `Own` | Boolean flag indicating portfolio ownership, represented by a briefcase emoji (`💼`) in the message. |
+| `Error` | Boolean flag indicating whether data retrieval failed, resulting in an unavailable status message. |
 
 ---
 
 ## How-to guides
 
 ### How to trigger the workflow manually
-1. Navigate to your repository on GitHub and click on the **Actions** tab.
-2. Select the **market-crypto-1d-update** workflow from the sidebar list.
-3. Click the **Run workflow** dropdown button on the right side.
-4. Confirm by clicking the green **Run workflow** button.
+1. Navigate to the **Actions** tab in your GitHub repository.
+2. Select the **market-crypto-1d-update** workflow from the sidebar.
+3. Click the **Run workflow** dropdown button.
+4. Confirm by clicking **Run workflow**. (Note: This workflow is typically driven externally via cron-job.org using workflow dispatch).
 
-### How to add a new crypto asset to the daily report
+### How to add a new crypto instrument
 1. Open the workflow file at `.github/workflows/market-crypto-1d-update.yml`.
-2. Locate the `$Indices` PowerShell array within the `send-info` job steps.
-3. Add a new hashtable entry following the appropriate schema:
-   - For Twelve Data sources:
+2. Locate the `$Indices` array inside the PowerShell script block.
+3. Add a new hash table entry representing the asset. 
+   - For standard Twelve Data assets:
      ```powershell
      @{ Name = "NEW/USD"; Ticker = "NEW/USD"; Market = "CRYPTO"; Own = $false }
      ```
-   - For CoinGecko sources:
+   - For CoinGecko-backed assets:
      ```powershell
      @{ Name = "NEW/USD"; Ticker = "NEW/USD"; Market = "CRYPTO"; Own = $true; Source = "COINGECKO"; CoinId = "coingecko-id" }
      ```
-4. Commit your changes to the repository.
+4. Commit and push your changes to the repository.
 
 ---
 
 ## Explanation
 
-### Design decisions
-- **External Cron Scheduling:** The workflow relies exclusively on the `workflow_dispatch` trigger, allowing an external scheduling service (such as cron-job.org) to invoke the update on demand without depending strictly on GitHub Actions' internal cron latency.
-- **PowerShell Runtime:** PowerShell (`pwsh`) is chosen as the execution shell across all steps on the `ubuntu-latest` runner, enabling robust data manipulation, hashtable iteration, and error handling through standard .NET methods and custom functions (`Get-CryptoData`, `Get-CoinGeckoData`).
-- **Multi-Source Fallback Strategy:** While Twelve Data serves as the primary provider for standard cryptocurrency pairs, a secondary provider branch (`CoinGecko`) is integrated to seamlessly support alternative assets (like Hyperliquid's HYPE/USD) whose data availability requires specialized identifiers.
-- **Graceful Error Handling:** Individual asset lookups are wrapped in `try/catch` blocks. If an API call fails or returns insufficient points, the workflow flags the asset as unavailable rather than failing the entire pipeline, ensuring the rest of the daily report is still delivered.
-- **Descending Percentage Sort:** Assets are automatically sorted by their daily percentage change (`DayPct`) in descending order, immediately highlighting top performers and market losers at the top of the Telegram notification.
+### Design Decisions
+
+- **External Scheduling via `workflow_dispatch`**: The workflow relies exclusively on an external scheduler (cron-job.org) triggering the `workflow_dispatch` event rather than GitHub Actions' built-in cron syntax. This avoids standard GitHub Actions schedule delays and queuing issues during peak hours.
+- **PowerShell as a Universal Scripting Engine**: PowerShell (`pwsh`) is used across the runner steps to handle data fetching, parsing, sorting, and formatting. This ensures consistent execution behavior across different runner environments and simplifies complex JSON and math manipulations.
+- **Multi-Source Fallback Strategy**: While Twelve Data serves as the primary provider for standard currency pairs, a secondary source handler (`Get-CoinGeckoData`) is integrated to support tokens that may lack sufficient liquidity or history on traditional feeds (such as `HYPE/USD`).
+- **Resilient Error Handling**: Individual data fetch operations are wrapped in `try/catch` blocks. If an API request fails or returns insufficient data for a specific ticker, the workflow marks that asset as unavailable rather than failing the entire job execution, ensuring partial reports are still successfully delivered to Telegram.
+- **Performance-based Sorting**: Assets are automatically sorted in descending order by their daily percentage change (`DayPct`), highlighting top performers and market losers dynamically at the top of the Telegram notification.
