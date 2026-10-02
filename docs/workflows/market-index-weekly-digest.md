@@ -1,50 +1,52 @@
-# market-index-weekly-digest
-
-> **Last reviewed:** 2026-04-21
-> **Workflow file:** [`.github/workflows/market-index-weekly-digest.yml`](../../.github/workflows/market-index-weekly-digest.yml)
-
----
+# Workflow documentation: market-index-weekly-digest
+**Workflow file:** [.github/workflows/market-index-weekly-digest.yml](../../.github/workflows/market-index-weekly-digest.yml)
+**Last reviewed date:** 2026-10-02
 
 ## Reference
 
 ### Triggers
 
-| Trigger             | Details                                    |
-|---------------------|--------------------------------------------|
-| `schedule`          | Every Sunday at 10:53 UTC (12:53 CET)     |
-| `workflow_dispatch` | Manual trigger from the GitHub Actions UI  |
+| Trigger | Details |
+| :--- | :--- |
+| `schedule` | Every Sunday at 5:53 UTC |
+| `workflow_dispatch` | Manual trigger from the GitHub Actions UI |
 
 ### Required Secrets
 
-| Secret              | Purpose                                  |
-|---------------------|------------------------------------------|
-| `TELEGRAM_TOKEN`    | Bot token for the Telegram API          |
-| `TELEGRAM_CHAT_ID`  | Target chat or channel ID                |
-| `TWELVEDATA_KEY`    | API key for TwelveData (US indices)     |
-| `EODHD_KEY`         | API key for EOD Historical Data (SE indices) |
+| Secret | Purpose |
+| :--- | :--- |
+| `TELEGRAM_TOKEN` | Bot token for the Telegram API |
+| `TELEGRAM_CHAT_ID` | Target chat or channel ID |
+| `TWELVEDATA_KEY` | API key for TwelveData (US indices) |
+| `EODHD_KEY` | API key for EOD Historical Data (SE indices) |
 
 ### Tracked Instruments
 
-| Flag | Name               | Ticker          | Market | Data Source           |
-|------|--------------------|-----------------|--------|-----------------------|
-| 🇸🇪  | OMXSPI            | `OMXSPI.INDX`   | SE     | EOD Historical Data   |
-| 🇸🇪  | OMXS30            | `OMXS30.INDX`   | SE     | EOD Historical Data   |
-| 🇺🇸  | S&P 500 (ETF)     | `SPY`           | US     | TwelveData            |
-| 🇺🇸  | DJI (ETF)         | `DIA`           | US     | TwelveData            |
+| Flag | Name | Ticker | Market | Data Source |
+| :--- | :--- | :--- | :--- | :--- |
+| 🇸🇪 | OMXSPI | `OMXSPI.INDX` | SE | EOD Historical Data |
+| 🇸🇪 | OMXS30GI | `OMXS30GI.INDX` | SE | EOD Historical Data |
+| 🇸🇪 | OMXS30 | `OMXS30.INDX` | SE | EOD Historical Data |
+| 🇺🇸 | S&P 500 (ETF) | `SPY` | US | TwelveData |
+| 🇺🇸 | DJUS (ETF) | `IYY` | US | TwelveData |
+| 🇺🇸 | DJI (ETF) | `DIA` | US | TwelveData |
 
 ### Output Fields
 
-| Field   | Description                                      |
-|---------|--------------------------------------------------|
-| Close   | Last available daily closing price               |
-| WeekPct | % change vs close 5 trading days ago            |
+| Field | Description |
+| :--- | :--- |
+| Close | Last available daily closing price |
+| WeekPct | % change vs close 5 trading days ago |
+| MonthPct | % change vs close 21 trading days ago |
+| SixMoPct | % change vs close 126 trading days ago |
+| YearPct | % change vs close 252 trading days ago |
 
 ### Data Sources
 
-| Market | API                | Endpoint                            | Notes                                       |
-|--------|--------------------|-------------------------------------|---------------------------------------------|
-| US     | TwelveData         | `/time_series`                      | Daily candles, 252 days                     |
-| SE     | EOD Historical Data | `/eod`                             | Daily candles, 252 days, end-of-day only   |
+| Market | API | Endpoint | Notes |
+| :--- | :--- | :--- | :--- |
+| US | TwelveData | `/time_series` | Daily candles, 253 days |
+| SE | EOD Historical Data | `/eod` | Daily candles, 253 days, end-of-day only |
 
 > **Note:** EOD Historical Data on the free plan only provides end-of-day prices. SE data is always the previous day's close, never intraday. This is acceptable for a weekly digest.
 
@@ -82,7 +84,7 @@ Update the cron expression under `schedule`:
 
 ```yaml
 schedule:
-  - cron: '53 10 * * 0'   # 0 = Sunday, 10:53 UTC
+  - cron: '53 5 * * 0'   # 0 = Sunday, 5:53 UTC
 ```
 
 ---
