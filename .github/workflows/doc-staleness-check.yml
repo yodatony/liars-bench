@@ -117,16 +117,18 @@ jobs:
               $Prompt = $PromptLines -join "`n"
 
               $RequestBody = @{
-                  model    = "gemini-3.8-flash"
+                  model    = "gemini-3.5-flash-lite"
                   messages = @(
                       @{ role = "user"; content = $Prompt }
                   )
                   max_tokens = 4096
               } | ConvertTo-Json -Depth 10
 
-              # Gemini occasionally returns 503 (overloaded) - retry with a fixed delay
+              # Gemini occasionally returns 503 (overloaded) - retry with a fixed delay.
+              # 429 means the daily quota is exhausted, so retrying won't help - skip this doc instead.
               $MaxAttempts = 10
               $RetryDelaySeconds = 5
+              $Response = $null
               for ($Attempt = 1; $Attempt -le $MaxAttempts; $Attempt++) {
                   try {
                       $Response = Invoke-RestMethod `
@@ -141,7 +143,10 @@ jobs:
                       break
                   } catch {
                       $StatusCode = $_.Exception.Response.StatusCode.value__
-                      if ($StatusCode -in 429, 500, 503 -and $Attempt -lt $MaxAttempts) {
+                      if ($StatusCode -eq 429) {
+                          Write-Host "  Gemini API quota exhausted (429), skipping $DocFile for this run."
+                          break
+                      } elseif ($StatusCode -in 500, 503 -and $Attempt -lt $MaxAttempts) {
                           Write-Host "  Gemini API returned $StatusCode, retrying in $RetryDelaySeconds s (attempt $Attempt/$MaxAttempts)..."
                           Start-Sleep -Seconds $RetryDelaySeconds
                       } else {
@@ -149,6 +154,8 @@ jobs:
                       }
                   }
               }
+
+              if (-not $Response) { continue }
 
               $NewDocContent = $Response.choices[0].message.content
 
