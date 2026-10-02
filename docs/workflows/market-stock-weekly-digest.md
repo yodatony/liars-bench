@@ -24,23 +24,23 @@
 
 | Flag | Name | Ticker | Market | Own | Data Source |
 |---|---|---|---|---|---|
-| 🇸🇪 | ATCO B | `ATCO-B.ST` | SE | true | EOD Historical Data |
-| 🇸🇪 | LATO B | `LATO-B.ST` | SE | false | EOD Historical Data |
-| 🇸🇪 | INVE B | `INVE-B.ST` | SE | true | EOD Historical Data |
-| 🇸🇪 | VOLV B | `VOLV-B.ST` | SE | false | EOD Historical Data |
-| 🇸🇪 | SAAB B | `SAAB-B.ST` | SE | false | EOD Historical Data |
-| 🇸🇪 | SWED A | `SWED-A.ST` | SE | false | EOD Historical Data |
-| 🇸🇪 | SHB A | `SHB-A.ST` | SE | false | EOD Historical Data |
-| 🇸🇪 | SEB A | `SEB-A.ST` | SE | true | EOD Historical Data |
-| 🇸🇪 | EVO | `EVO.ST` | SE | true | EOD Historical Data |
-| 🇩🇰 | Novo B | `NOVO-B.CO` | DK | true | EOD Historical Data |
-| 🇺🇸 | AVGO | `AVGO` | US | true | TwelveData |
-| 🇺🇸 | AAPL | `AAPL` | US | false | TwelveData |
-| 🇺🇸 | MSFT | `MSFT` | US | true | TwelveData |
-| 🇺🇸 | AMZN | `AMZN` | US | false | TwelveData |
-| 🇺🇸 | GOOGL | `GOOGL` | US | false | TwelveData |
-| 🇺🇸 | TSLA | `TSLA` | US | true | TwelveData |
-| 🇺🇸 | NOW | `NOW` | US | true | TwelveData |
+| 🇸🇪 | ATCO B | `ATCO-B.ST` | SE | Yes | EOD Historical Data |
+| 🇸🇪 | LATO B | `LATO-B.ST` | SE | No | EOD Historical Data |
+| 🇸🇪 | INVE B | `INVE-B.ST` | SE | Yes | EOD Historical Data |
+| 🇸🇪 | VOLV B | `VOLV-B.ST` | SE | No | EOD Historical Data |
+| 🇸🇪 | SAAB B | `SAAB-B.ST` | SE | No | EOD Historical Data |
+| 🇸🇪 | SWED A | `SWED-A.ST` | SE | No | EOD Historical Data |
+| 🇸🇪 | SHB A | `SHB-A.ST` | SE | No | EOD Historical Data |
+| 🇸🇪 | SEB A | `SEB-A.ST` | SE | Yes | EOD Historical Data |
+| 🇸🇪 | EVO | `EVO.ST` | SE | Yes | EOD Historical Data |
+| 🇩🇰 | Novo B | `NOVO-B.CO` | DK | Yes | EOD Historical Data |
+| 🇺🇸 | AVGO | `AVGO` | US | Yes | TwelveData |
+| 🇺🇸 | AAPL | `AAPL` | US | No | TwelveData |
+| 🇺🇸 | MSFT | `MSFT` | US | Yes | TwelveData |
+| 🇺🇸 | AMZN | `AMZN` | US | No | TwelveData |
+| 🇺🇸 | GOOGL | `GOOGL` | US | No | TwelveData |
+| 🇺🇸 | TSLA | `TSLA` | US | Yes | TwelveData |
+| 🇺🇸 | NOW | `NOW` | US | Yes | TwelveData |
 
 ### Output Fields
 
