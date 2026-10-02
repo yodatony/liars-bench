@@ -6,71 +6,69 @@
 
 ### Triggers
 
-| Trigger Type | Schedule Expression / Event | Description |
-|---|---|---|
-| Manual Trigger | `workflow_dispatch` | Allows manual triggering via GitHub Actions UI or API. |
-| Scheduled Trigger | `55 2 1 * *` | Runs automatically on the 1st of every month at 02:55 UTC. |
+| Trigger Type | Schedule Expression |
+|---|---|
+| Manual | `workflow_dispatch` |
+| Schedule | `55 2 1 * *` (1st of every month at 02:55 UTC) |
 
 ### Secrets
 
 | Secret Name | Purpose |
 |---|---|
-| `GITHUB_TOKEN` | Provides access to repository content, commit history, and GitHub CLI operations for creating branches and pull requests. |
-| `GEMINI_API_KEY` | Authenticates requests to Google's Gemini API (`gemini-3.8-flash`) for rewriting or generating documentation. |
+| `GITHUB_TOKEN` | Provides authentication for Git operations, checking out the repository, and managing pull requests via GitHub CLI (`gh`). |
+| `GEMINI_API_KEY` | Provides authentication for calling the Gemini API to check/rewrite documentation content. |
 
 ### Tickers/Instruments Table
 
-| Ticker | Instrument Type | Description |
+| No. | Ticker | Description |
 |---|---|---|
-| N/A | N/A | This workflow does not process or monitor financial tickers or market instruments. |
+| N/A | N/A | This workflow does not process financial tickers or market instruments. |
 
 ### Output Fields
 
 | Field | Description |
 |---|---|
-| `BranchName` | Name of the generated branch (`doc-update/<WorkflowName>-<YYYYMMDD>`). |
-| `PR Title` | Title of the pull request created (`📝 Doc update: <WorkflowName>` or `📝 New doc: <WorkflowName>`). |
-| `PR Body` | Body text including comparison dates, instructions, and recent workflow commit logs. |
-| `WorkflowDate` | Timestamp of the last Git commit modifying the workflow file. |
-| `DocDate` | Timestamp of the last Git commit modifying the corresponding documentation file. |
-| `IsStale` | Boolean indicating whether the documentation is missing or older than the workflow file. |
+| `BranchName` | The Git branch created or refreshed for the documentation update PR (`doc-update/<WorkflowName>-<Timestamp>`). |
+| `IsStale` | Boolean value indicating whether the workflow file has newer commits than the corresponding documentation file. |
+| `ExistingPR` | Metadata object representing an already open pull request for the workflow documentation, if any. |
 
 ### API/Data Sources
 
-| API / Data Source | Purpose |
+| Source | Purpose |
 |---|---|
-| GitHub CLI (`gh`) / Git | Inspects open pull requests, checks commit logs, creates branches, commits documentation changes, and opens pull requests. |
-| Google Gemini API | OpenAI-compatible completions endpoint (`gemini-3.8-flash`) used to analyze workflow changes and generate or update Diataxis-formatted documentation. |
+| GitHub CLI / API (`gh pr`) | List open PRs, create new pull requests, add comments to existing pull requests, and apply labels. |
+| Git History (`git log`) | Compare commit timestamps between workflow files and documentation files, and list commits made since the last doc update. |
+| Google Generative Language API | OpenAI-compatible chat completions endpoint (`https://generativelanguage.googleapis.com/v1beta/openai/chat/completions`) using model `gemini-3.5-flash-lite` to generate or update documentation. |
 
 ## How-to guides
 
 ### Creating or Updating Documentation
 
 1. **Trigger the Workflow**:
-   - Manually trigger the workflow using the GitHub Actions interface or wait for the scheduled monthly run.
+   - Wait for the automated schedule to trigger on the 1st of every month at 02:55 UTC, or manually trigger the workflow via the **Actions** tab in GitHub using `workflow_dispatch`.
 
-2. **Check for Staleness**:
-   - The workflow iterates over all `.github/workflows/*.yml` files and checks the last commit date against their corresponding documentation files in `docs/workflows/`.
+2. **Automated Staleness Verification**:
+   - The workflow checks out the repository and inspects all workflow YAML files in `.github/workflows/`.
+   - It compares the last commit date of each workflow file against its corresponding documentation file in `docs/workflows/`.
 
-3. **Generate Documentation via Gemini**:
-   - If the workflow file has a newer commit than the documentation file (or documentation does not exist) and no open PR exists for it, the workflow sends the workflow file, existing doc, and recent commit history to the Gemini API (`gemini-3.8-flash`).
-   - If Gemini returns a transient error (such as 429, 500, or 503), the workflow retries up to 5 times with exponential backoff.
-
-4. **Review and Merge the Pull Request**:
-   - The workflow commits the generated documentation to a branch named `doc-update/<WorkflowName>-<YYYYMMDD>` and opens a pull request labeled `documentation`.
-   - Maintainers can review the generated pull request against the workflow changes and merge or request edits.
+3. **AI Generation and PR Management**:
+   - If a workflow file is newer than its documentation (or the documentation doesn't exist), the workflow queries the Gemini API to generate updated documentation matching the Diataxis framework.
+   - If an open pull request already exists for that workflow's documentation, the workflow refreshes the existing branch, pushes new commits, and adds a progress comment to the open PR.
+   - Otherwise, it creates a new branch, commits the updated documentation, and opens a new pull request labeled `documentation`.
 
 ### Reviewing the PR
 
-1. Open the pull request created by the workflow.
-2. Review the changes against the workflow file.
-3. Ensure that the documentation accurately reflects the current workflow.
-4. Merge the PR if everything looks correct.
+1. Navigate to the **Pull Requests** tab in your repository.
+2. Locate the pull request titled either `📝 New doc: <WorkflowName>` or `📝 Doc update: <WorkflowName>`.
+3. Review the changes made to the markdown file under `docs/workflows/` to ensure accuracy against recent workflow adjustments and commits.
+4. Merge the pull request or request changes as needed.
 
 ## Explanation
 
-The `doc-staleness-check` workflow is designed to ensure that workflow documentation in `docs/workflows/` remains up-to-date with corresponding workflow files in `.github/workflows/`. 
+The `doc-staleness-check` workflow automates the maintenance of repository documentation by ensuring that markdown files in `docs/workflows/` do not drift out of sync with their corresponding GitHub Actions workflow definitions. 
 
-By comparing Git commit timestamps between each workflow and its corresponding markdown document, the workflow identifies stale or missing documentation. To avoid duplicate pull requests, it checks whether an open PR already exists for the given workflow before proceeding.
-
-When a workflow requires documentation updates, it sends the workflow content, previous documentation, and recent commit logs to Google's Gemini API (`gemini-3.8-flash`) using an OpenAI-compatible endpoint. The prompt instructs the model to follow the Diataxis framework (Reference, How-to guides, and Explanation) and preserve existing contextual information while bringing reference tables and descriptions into alignment with the workflow definition. Exponential backoff retry logic is implemented to handle intermittent rate limits or high-demand service responses (503/429).
+Key design decisions include:
+- **Diataxis Framework Compliance**: Enforces a strict four-section structure (Reference, How-to guides, Explanation) to maintain consistency across all workflow documentation.
+- **Robust PR Management**: Instead of blindly spamming new pull requests when workflow updates happen frequently, the script detects existing open PRs (`doc-update/<WorkflowName>-*`) and refreshes them, preventing PR fatigue for maintainers.
+- **Resilient API Handling**: Incorporates retry logic with fixed delays for transient Google Generative Language API 500/503 errors, and gracefully skips processing if rate limits (429 quota exhaustion) are hit.
+- **PowerShell Implementation**: Utilizes PowerShell (`pwsh`) scripts to handle git operations, REST API payloads, and string manipulations uniformly across operating systems.
