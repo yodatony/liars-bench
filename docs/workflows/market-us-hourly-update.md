@@ -14,66 +14,72 @@
 
 | Secret Name | Description |
 | :--- | :--- |
-| `TELEGRAM_TOKEN` | Authentication token for the Telegram Bot API. |
-| `TELEGRAM_CHAT_ID` | Identifier for the target Telegram chat or channel. |
-| `TWELVEDATA_KEY` | API key used to authenticate requests to the Twelve Data API. |
+| `TELEGRAM_TOKEN` | Bot token used to authenticate with the Telegram Bot API. |
+| `TELEGRAM_CHAT_ID` | Target chat or channel ID where the market update message is sent. |
+| `TWELVEDATA_KEY` | API key for authenticating requests to the Twelve Data API. |
 
 ### Tickers / Instruments
 
-| Name | Ticker | Market | Own Status |
+| Name | Ticker | Market | Portfolio Own (`Own`) |
 | :--- | :--- | :--- | :--- |
-| DJI (ETF) | DIA | US | False |
-| DJUS (ETF) | IYY | US | False |
-| S&P 500 (ETF) | SPY | US | False |
-| MSFT | MSFT | US | False |
-| NOW | NOW | US | False |
-| TSLA | TSLA | US | False |
-| AVGO | AVGO | US | False |
-
-### Output Fields
-
-| Field Name | Source | Description |
-| :--- | :--- | :--- |
-| `Current` | Twelve Data API (`close`) | Rounded current or closing price of the instrument. |
-| `DayPct` | Twelve Data API (`percent_change`) | Percentage change for the day, rounded to two decimal places. |
-| `Date` | Twelve Data API (`datetime`) | Date of the returned quote candle, used to verify trading activity. |
+| DJI (ETF) | DIA | US | `false` |
+| DJUS (ETF) | IYY | US | `false` |
+| S&P 500 (ETF) | SPY | US | `false` |
+| MSFT | MSFT | US | `true` |
+| NOW | NOW | US | `true` |
+| TSLA | TSLA | US | `true` |
+| AVGO | AVGO | US | `true` |
 
 ### API / Data Sources
 
 | Provider | Endpoint / URL | Purpose |
 | :--- | :--- | :--- |
-| Twelve Data | `https://api.twelvedata.com/quote` | Fetches real-time or end-of-day stock and ETF quotes. |
-| Telegram Bot API | `https://api.telegram.org/bot<TOKEN>/sendMessage` | Dispatches the formatted market update message to the configured chat. |
+| Twelve Data | `https://api.twelvedata.com/quote?symbol={Ticker}&apikey={TWELVEDATA_KEY}` | Fetches real-time quote data, current price, percent change, and datetime for each instrument. |
+| Telegram Bot API | `https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage` | Delivers the formatted HTML market update message to the specified chat. |
+
+### Output Fields
+
+| Field / Variable | Description |
+| :--- | :--- |
+| `Current` | Rounded current price of the instrument. |
+| `DayPct` | Rounded percentage change for the day. |
+| `Date` | Date associated with the latest trading candle data retrieved. |
+| `UsMarketOpen` | Boolean status indicating whether the US market is currently open based on CET time and weekdays. |
+| `IsMarketClose` | Boolean status indicating if the current time matches the US market close schedule (22:00 CET). |
+
+---
 
 ## How-to guides
 
-### How to trigger a manual market update
-1. Navigate to your repository on GitHub and click on the **Actions** tab.
-2. Select the **market-us-hourly-update** workflow from the left-hand sidebar.
-3. Click the **Run workflow** dropdown button.
-4. Confirm by clicking the green **Run workflow** button to execute the job immediately.
+### How to trigger the workflow manually
+1. Navigate to your repository on GitHub.
+2. Click on the **Actions** tab.
+3. Select the **market-us-hourly-update** workflow from the left-hand sidebar.
+4. Click the **Run workflow** dropdown button and confirm by clicking **Run workflow**.
 
-### How to add a new ticker or instrument
+### How to add a new ticker to track
 1. Open the workflow file at `.github/workflows/market-us-hourly-update.yml`.
 2. Locate the `$Indices` array inside the PowerShell script block.
-3. Add a new hashtable entry with the required properties (`Name`, `Ticker`, `Market`, and `Own`):
+3. Add a new hashtable entry with the instrument's display `Name`, `Ticker`, `Market`, and whether it is part of your portfolio (`Own = $true` or `$false`):
    ```powershell
-   @{ Name = "New Asset"; Ticker = "ABC"; Market = "US"; Own = $true }
+   @{ Name = "NEW"; Ticker = "NEW"; Market = "US"; Own = $true }
    ```
-4. Save the file and commit your changes to the repository.
+4. Commit and push your changes to the repository.
 
 ### How to update required secrets
-1. Go to your GitHub repository's main page and click **Settings**.
-2. In the left sidebar, expand **Secrets and variables** and click **Actions**.
-3. Locate the secret you wish to modify (`TELEGRAM_TOKEN`, `TELEGRAM_CHAT_ID`, or `TWELVEDATA_KEY`) and click the **Update** or pencil icon.
-4. Enter the new value and click **Update secret**.
+1. Go to your GitHub repository settings.
+2. Navigate to **Secrets and variables** > **Actions**.
+3. Locate or create the required repository secrets (`TELEGRAM_TOKEN`, `TELEGRAM_CHAT_ID`, and `TWELVEDATA_KEY`).
+4. Update their values as needed.
+
+---
 
 ## Explanation
 
-### Design Decisions
+### Design Decisions and Reasoning
 
-- **PowerShell Runtime (`pwsh`)**: The workflow executes using PowerShell on an `ubuntu-latest` runner. This allows for complex conditional logic, robust data manipulation via hashtables and custom objects, and clean string interpolation without relying on external shell script files.
-- **Timezone Awareness (`Europe/Stockholm`)**: Market open/close states and message timestamps are calculated specifically in Central European Time (CET/CEST) by explicitly converting UTC times using system timezone definitions. This ensures consistency for users regardless of the GitHub Actions runner's default UTC clock.
-- **Holiday and Non-Trading Day Detection**: The script checks whether the fetched quote's date (`$CandleDate`) matches the current local date (`$TodayDate`). If there is a mismatch (indicating a market holiday or weekend closure where no new candle is generated), the workflow terminates gracefully (`exit 0`) to prevent sending stale data to Telegram.
-- **Dynamic Formatting based on Market State**: Depending on whether the US market is actively open (`$UsMarketOpen`) or closed, the script dynamically switches between circular status indicators (🟢/🔴) with percentage formatting and directional arrow symbols (▲/▼). Additionally, a dedicated banner format triggers automatically at market close (`22:00 CET`).
-- **Portfolio Tagging**: Instruments marked with `Own = $true` automatically append a briefcase emoji (`💼`) to the output line, allowing quick identification of owned assets within the broadcast message.
+- **PowerShell Runtime (`pwsh`):** PowerShell is used as the execution shell on the `ubuntu-latest` runner because it provides robust object manipulation, clean syntax for hashtables and arrays, and native error handling via `try/catch` blocks when interfacing with REST APIs.
+- **Timezone Awareness (`Europe/Stockholm`):** Market schedules and message timestamps are evaluated in Central European Time (CET) to align local monitoring schedules with US market hours correctly.
+- **Holiday and Weekend Skipping:** The script extracts the trading date (`$CandleDate`) returned by the Twelve Data API and compares it against the current local date (`$TodayDate`). If trading did not occur on that day (e.g., market holidays or weekends), the workflow gracefully exits without sending an outdated or empty update.
+- **Conditional Formatting:** Visual indicators (circles, arrows, and portfolio briefcases `💼`) are dynamically adjusted depending on whether the US market is currently open or closed, ensuring clear context for intraday versus closing data.
+- **External Scheduling via `workflow_dispatch`:** By exposing a manual dispatch trigger rather than a native GitHub Actions cron schedule, the workflow relies on an external scheduler (cron-job.org) to handle precise timing intervals.
