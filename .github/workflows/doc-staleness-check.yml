@@ -8,7 +8,6 @@ on:
 permissions:
   contents: write
   pull-requests: write
-  models: read
 
 jobs:
   check-docs:
@@ -20,11 +19,12 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Check staleness and rewrite docs via GitHub Models
+      - name: Check staleness and rewrite docs via Gemini
         shell: pwsh
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REPO:     ${{ github.repository }}
+          GH_TOKEN:       ${{ secrets.GITHUB_TOKEN }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          REPO:           ${{ github.repository }}
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -78,7 +78,7 @@ jobs:
               }
               $CommitList = ($CommitLines | Where-Object { $_ -ne "" }) -join "`n"
 
-              # Call GitHub Models API (gpt-4o-mini, free with GITHUB_TOKEN)
+              # Call Gemini's free, OpenAI-compatible API (GitHub Models was retired 2026-07-30)
               $DocContext = if ($CurrentDoc) {
                   "You are updating an existing documentation file. Preserve all existing Explanation and How-to content unless the workflow makes it incorrect."
               } else {
@@ -117,7 +117,7 @@ jobs:
               $Prompt = $PromptLines -join "`n"
 
               $RequestBody = @{
-                  model    = "gpt-4o-mini"
+                  model    = "gemini-2.5-flash"
                   messages = @(
                       @{ role = "user"; content = $Prompt }
                   )
@@ -125,10 +125,10 @@ jobs:
               } | ConvertTo-Json -Depth 10
 
               $Response = Invoke-RestMethod `
-                  -Uri     "https://models.inference.ai.azure.com/chat/completions" `
+                  -Uri     "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions" `
                   -Method  Post `
                   -Headers @{
-                      "Authorization" = "Bearer $env:GH_TOKEN"
+                      "Authorization" = "Bearer $env:GEMINI_API_KEY"
                       "Content-Type"  = "application/json"
                   } `
                   -Body $RequestBody `
