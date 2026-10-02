@@ -5,17 +5,17 @@
 ## Reference
 
 ### Triggers
-| Trigger Type | Description |
+| Trigger | Description |
 | :--- | :--- |
-| `workflow_dispatch` | Triggered externally on schedule via cron-job.org. |
+| `workflow_dispatch` | Triggered externally on schedule via cron-job.org |
 
 ### Secrets
-| Secret Name | Description |
+| Secret | Description |
 | :--- | :--- |
-| `TELEGRAM_TOKEN` | Authentication token for the Telegram Bot API. |
-| `TELEGRAM_CHAT_ID` | Target Telegram chat or channel ID where messages are sent. |
-| `EODHD_KEY` | API key for fetching Swedish market data from EODHD. |
-| `TWELVEDATA_KEY` | API key for fetching US market data from Twelve Data. |
+| `TELEGRAM_TOKEN` | Bot authentication token for the Telegram API |
+| `TELEGRAM_CHAT_ID` | Target Telegram chat or channel ID where the message is sent |
+| `EODHD_KEY` | API key for fetching Swedish market data from EODHD |
+| `TWELVEDATA_KEY` | API key for fetching US market data from Twelve Data |
 
 ### Tickers and Instruments
 | Name | Ticker | Market | Data Source |
@@ -27,56 +27,57 @@
 | DJUS (ETF) | `IYY` | US | Twelve Data |
 | DJI (ETF) | `DIA` | US | Twelve Data |
 
-### API / Data Sources
-| Provider | Base URL / Endpoint | Purpose |
-| :--- | :--- | :--- |
-| EODHD | `https://eodhd.com/api/eod/{Ticker}` | Retrieves end-of-day pricing for Swedish index instruments. |
-| Twelve Data | `https://api.twelvedata.com/quote` | Retrieves quote and percentage change data for US ETF instruments. |
-| Telegram Bot API | `https://api.telegram.org/bot{TOKEN}/sendMessage` | Delivers the formatted daily review message to the designated chat. |
-
 ### Output Fields
-| Field Name | Description |
+| Field | Description |
 | :--- | :--- |
-| `Name` | Display name of the index or ETF. |
-| `Flag` | Regional emoji flag corresponding to the market (🇸🇪 for SE, 🇺🇸 for US). |
-| `Close` | Rounded closing price for the target trading day. |
-| `DayPct` | Percentage change compared to the previous trading day, formatted with a directional indicator and color emoji. |
-| `Date` | The calendar date of the pricing data (`yyyy-MM-dd`). |
-| `Error` | Boolean flag indicating whether data retrieval failed for the instrument. |
+| `Name` | Display name of the index or ETF |
+| `Flag` | Emoji flag representing the market region (🇸🇪 for SE, 🇺🇸 for US) |
+| `Close` | Rounded closing price for the trading day |
+| `DayPct` | Calculated percentage change from the previous trading day, formatted with a directional indicator (🟢/🔴) |
+| `Date` | The date of the market data entry (`YYYY-MM-DD`) |
 
----
+### API / Data Sources
+| Source | Base URL | Purpose |
+| :--- | :--- | :--- |
+| EODHD | `https://eodhd.com/api/eod/` | Retrieves end-of-day historical pricing for Swedish indices |
+| Twelve Data | `https://api.twelvedata.com/quote` | Retrieves real-time/end-of-day quotes for US ETFs |
+| Telegram Bot API | `https://api.telegram.org/bot<TOKEN>/sendMessage` | Delivers the formatted markdown/HTML review to the specified chat |
 
 ## How-to guides
 
 ### How to trigger the workflow manually
-1. Navigate to your repository on GitHub and click on the **Actions** tab.
-2. Select the **market-index-1d-update** workflow from the sidebar list.
-3. Click the **Run workflow** dropdown button on the right side.
-4. Confirm by clicking the green **Run workflow** button.
+1. Navigate to the GitHub repository in your browser.
+2. Click on the **Actions** tab.
+3. Select the **market-index-1d-update** workflow from the sidebar list.
+4. Click the **Run workflow** dropdown button.
+5. Click the green **Run workflow** button to confirm execution.
 
-### How to add a new market index or ETF
+### How to add a new index or ETF
 1. Open the workflow file at `.github/workflows/market-index-1d-update.yml`.
-2. Locate the `$Indices` array definition inside the PowerShell script block.
-3. Add a new hash table entry specifying the `Name`, `Ticker`, and `Market` (`SE` or `US`):
-   ```powershell
-   @{ Name = "New Index"; Ticker = "TICKER_SYMBOL"; Market = "US" }
-   ```
-4. Commit the changes to the workflow file.
+2. Locate the `$Indices` array inside the PowerShell script block.
+3. Add a new hash table entry matching the target market structure:
+   - For Swedish indices using EODHD: `@{ Name = "Index Name"; Ticker = "SYMBOL.INDX"; Market = "SE" }`
+   - For US instruments using Twelve Data: `@{ Name = "Index Name"; Ticker = "SYMBOL"; Market = "US" }`
+4. Commit and push your changes to the repository.
 
----
+### How to configure external scheduling
+1. Ensure the `workflow_dispatch` trigger remains active in the workflow file.
+2. Set up an external cron service (such as cron-job.org).
+3. Configure the cron job to send an HTTP POST request to the GitHub REST API endpoint for triggering workflow dispatches:
+   - **URL:** `https://api.github.com/repos/{owner}/{repo}/actions/workflows/market-index-1d-update.yml/dispatches`
+   - **Method:** `POST`
+   - **Headers:** Include a valid GitHub Personal Access Token with `repo` or `workflow` scope, along with required `Accept` and `User-Agent` headers.
+   - **Body:** `{ "ref": "main" }`
 
 ## Explanation
 
-### Design decisions and architecture
+### Design Decisions
 
-#### External Scheduling via `workflow_dispatch`
-The workflow uses `workflow_dispatch` as its sole native GitHub Actions trigger, removing internal GitHub cron expressions. This decision delegates the scheduling responsibility to an external cron service (cron-job.org), avoiding GitHub Actions queue delays and potential throttling on scheduled jobs.
+#### Separation of Data Providers
+The workflow splits data fetching between two distinct financial APIs (**EODHD** for Swedish indices and **Twelve Data** for US ETFs). This separation ensures that each market retrieves data from a provider optimized for that region's asset classes and ticker syntax, preventing cross-platform compatibility issues.
 
-#### Split Data Providers
-Swedish indices (`SE`) are sourced via EODHD, while US instruments (`US`) use Twelve Data. This separation ensures that each regional market is pulled from a provider best suited for its specific data feeds, optimizing reliability and format consistency.
+#### External Cron Triggering
+The workflow relies entirely on the `workflow_dispatch` trigger, intentionally removing native GitHub Actions cron schedules. This design decision avoids the queue delays and unreliability often associated with GitHub's native scheduler, delegating execution timing to a dedicated external service (cron-job.org) for precise delivery.
 
-#### Strict Date Filtering and Sorting
-The script calculates the target trading date as yesterday relative to the runner's execution time in the `Europe/Stockholm` timezone. Results are strictly filtered to match this target date (`$YesterdayDate`) to prevent stale data from appearing in the report. Surviving results are then sorted in descending order by their daily percentage change (`DayPct`), highlighting top performers and laggards clearly in the Telegram notification.
-
-#### Graceful Error Handling
-Each instrument lookup is wrapped in a `try/catch` block. If an API request fails or returns insufficient data, the script captures the error flag (`$true`) rather than halting the entire pipeline. The final Telegram message formats failed lookups gracefully with an unavailable warning (`⚠️`), ensuring that partial updates are delivered even if a single data source experiences an outage.
+#### Robust Error Handling and Filtering
+Errors are isolated per instrument inside a `try/catch` block within the loop. If a specific API call fails or returns insufficient data, the script flags that specific item as unavailable (`Error = $true`) rather than failing the entire workflow run. Furthermore, results are filtered strictly by the preceding trading day's date (`$YesterdayDate`) and sorted by performance (`DayPct`) in descending order to present a clean, reliable, and up-to-date summary in Telegram.
