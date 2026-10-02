@@ -124,8 +124,9 @@ jobs:
                   max_tokens = 4096
               } | ConvertTo-Json -Depth 10
 
-              # Gemini occasionally returns 503 (overloaded) - retry with backoff
-              $MaxAttempts = 5
+              # Gemini occasionally returns 503 (overloaded) - retry with a fixed delay
+              $MaxAttempts = 10
+              $RetryDelaySeconds = 5
               for ($Attempt = 1; $Attempt -le $MaxAttempts; $Attempt++) {
                   try {
                       $Response = Invoke-RestMethod `
@@ -141,9 +142,8 @@ jobs:
                   } catch {
                       $StatusCode = $_.Exception.Response.StatusCode.value__
                       if ($StatusCode -in 429, 500, 503 -and $Attempt -lt $MaxAttempts) {
-                          $Delay = [math]::Pow(2, $Attempt)
-                          Write-Host "  Gemini API returned $StatusCode, retrying in $Delay s (attempt $Attempt/$MaxAttempts)..."
-                          Start-Sleep -Seconds $Delay
+                          Write-Host "  Gemini API returned $StatusCode, retrying in $RetryDelaySeconds s (attempt $Attempt/$MaxAttempts)..."
+                          Start-Sleep -Seconds $RetryDelaySeconds
                       } else {
                           throw
                       }
