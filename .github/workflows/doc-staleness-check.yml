@@ -29,7 +29,7 @@ jobs:
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          $OpenPRs = gh pr list --repo $env:REPO --state open --json headRefName | ConvertFrom-Json
+          $OpenPRs = gh pr list --repo $env:REPO --state open --json headRefName,number | ConvertFrom-Json
 
           $WorkflowFiles = Get-ChildItem ".github/workflows/*.yml"
 
@@ -57,13 +57,15 @@ jobs:
 
               if (-not $IsStale) { continue }
 
-              # Check if an open PR already exists for this doc
-              if ($OpenPRs | Where-Object { $_.headRefName -like "doc-update/$WorkflowName*" }) {
-                  Write-Host "  Open PR already exists, skipping."
-                  continue
-              }
+              # If a PR is already open for this doc, refresh it instead of creating a duplicate
+              $ExistingPR = $OpenPRs | Where-Object { $_.headRefName -like "doc-update/$WorkflowName-*" } | Select-Object -First 1
 
-              $BranchName = "doc-update/$WorkflowName-$(Get-Date -Format 'yyyyMMdd-HHmm')"
+              if ($ExistingPR) {
+                  $BranchName = $ExistingPR.headRefName
+                  Write-Host "  Open PR #$($ExistingPR.number) already exists, refreshing it instead of creating a new one."
+              } else {
+                  $BranchName = "doc-update/$WorkflowName-$(Get-Date -Format 'yyyyMMdd-HHmm')"
+              }
 
               # Read current files
               $WorkflowContent = Get-Content $WorkflowFile -Raw
@@ -162,14 +164,19 @@ jobs:
               # Strip code fence wrapper if the AI returned ```markdown ... ```
               $NewDocContent = $NewDocContent -replace '^```[a-z]*\r?\n', '' -replace '\r?\n```\s*$', ''
 
-              # Create branch, commit, open PR
+              # Create/refresh branch, commit, open PR (or comment on the existing one)
               $DocExists  = Test-Path $DocFile
               $Action     = if ($DocExists) { "update" } else { "create" }
-              $CommitMsg  = if ($DocExists) { "docs: auto-update $DocFile (workflow changed since last doc edit)" } else { "docs: create $DocFile" }
+              $CommitMsg  = if ($ExistingPR) { "docs: refresh $DocFile (workflow changed again since PR was opened)" } elseif ($DocExists) { "docs: auto-update $DocFile (workflow changed since last doc edit)" } else { "docs: create $DocFile" }
               $PRTitle    = if ($DocExists) { "📝 Doc update: $WorkflowName" } else { "📝 New doc: $WorkflowName" }
 
-              git checkout main
-              git checkout -b $BranchName
+              if ($ExistingPR) {
+                  git fetch origin $BranchName
+                  git checkout -B $BranchName "origin/$BranchName"
+              } else {
+                  git checkout main
+                  git checkout -b $BranchName
+              }
 
               $null = New-Item -ItemType Directory -Force -Path (Split-Path $DocFile)
               Set-Content -Path $DocFile -Value $NewDocContent -NoNewline
@@ -177,34 +184,53 @@ jobs:
               git commit -m $CommitMsg
               git push origin $BranchName
 
-              $PRBodyLines = @(
-                  $(if ($DocExists) {
-                      "This PR was automatically generated because ``$WorkflowFile`` was modified after the documentation was last updated."
-                  } else {
-                      "This PR was automatically generated because ``$WorkflowFile`` exists but has no documentation yet."
-                  }),
-                  "",
-                  "| | Date |",
-                  "|---|---|",
-                  "| Workflow last changed | $WorkflowDate |",
-                  "| Doc last changed | $(if ($DocDate) { $DocDate } else { 'never' }) |",
-                  "",
-                  "Please review the $Action`d documentation for accuracy, then merge or request changes.",
-                  "",
-                  "## Workflow commits since last doc update",
-                  "",
-                  $CommitList
-              )
-              $PRBody = $PRBodyLines -join "`n"
+              if ($ExistingPR) {
+                  $CommentBodyLines = @(
+                      "🔄 Documentation regenerated - the workflow changed again since this PR was opened.",
+                      "",
+                      "| | Date |",
+                      "|---|---|",
+                      "| Workflow last changed | $WorkflowDate |",
+                      "",
+                      "## Workflow commits since last doc update",
+                      "",
+                      $CommitList
+                  )
+                  $CommentBody = $CommentBodyLines -join "`n"
 
-              gh pr create `
-                  --repo  $env:REPO `
-                  --title $PRTitle `
-                  --body  $PRBody `
-                  --base  main `
-                  --head  $BranchName `
-                  --label "documentation"
+                  gh pr comment $ExistingPR.number --repo $env:REPO --body $CommentBody
 
-              Write-Host "  PR created for $DocFile"
+                  Write-Host "  PR #$($ExistingPR.number) refreshed for $DocFile"
+              } else {
+                  $PRBodyLines = @(
+                      $(if ($DocExists) {
+                          "This PR was automatically generated because ``$WorkflowFile`` was modified after the documentation was last updated."
+                      } else {
+                          "This PR was automatically generated because ``$WorkflowFile`` exists but has no documentation yet."
+                      }),
+                      "",
+                      "| | Date |",
+                      "|---|---|",
+                      "| Workflow last changed | $WorkflowDate |",
+                      "| Doc last changed | $(if ($DocDate) { $DocDate } else { 'never' }) |",
+                      "",
+                      "Please review the $Action`d documentation for accuracy, then merge or request changes.",
+                      "",
+                      "## Workflow commits since last doc update",
+                      "",
+                      $CommitList
+                  )
+                  $PRBody = $PRBodyLines -join "`n"
+
+                  gh pr create `
+                      --repo  $env:REPO `
+                      --title $PRTitle `
+                      --body  $PRBody `
+                      --base  main `
+                      --head  $BranchName `
+                      --label "documentation"
+
+                  Write-Host "  PR created for $DocFile"
+              }
           }
 
