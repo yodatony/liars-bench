@@ -35,11 +35,11 @@
 
 | Field | Description |
 | :--- | :--- |
-| Close | Last available daily closing price |
-| WeekPct | % change vs close 5 trading days ago |
-| MonthPct | % change vs close 21 trading days ago |
-| SixMoPct | % change vs close 126 trading days ago |
-| YearPct | % change vs close 252 trading days ago |
+| `Close` | Last available daily closing price |
+| `WeekPct` | % change vs close 5 trading days ago |
+| `MonthPct` | % change vs close 21 trading days ago |
+| `SixMoPct` | % change vs close 126 trading days ago |
+| `YearPct` | % change vs close 252 trading days ago |
 
 ### Data Sources
 
