@@ -2,6 +2,11 @@ name: doc-staleness-check
 
 on:
   workflow_dispatch:
+    inputs:
+      workflow_name:
+        description: "Only check this workflow (file name without .yml). Leave empty to check all."
+        required: false
+        type: string
   schedule:
     - cron: '55 2 1 * *'   # 1st of every month at 02:55 UTC
 
@@ -25,6 +30,7 @@ jobs:
           GH_TOKEN:       ${{ secrets.GITHUB_TOKEN }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           REPO:           ${{ github.repository }}
+          WORKFLOW_NAME:  ${{ github.event.inputs.workflow_name }}
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -32,6 +38,12 @@ jobs:
           $OpenPRs = gh pr list --repo $env:REPO --state open --json headRefName,number | ConvertFrom-Json
 
           $WorkflowFiles = Get-ChildItem ".github/workflows/*.yml"
+          if ($env:WORKFLOW_NAME) {
+              $WorkflowFiles = $WorkflowFiles | Where-Object { $_.BaseName -eq $env:WORKFLOW_NAME }
+              if (-not $WorkflowFiles) {
+                  Write-Host "No workflow file named '$env:WORKFLOW_NAME' found."
+              }
+          }
 
           foreach ($WfFile in $WorkflowFiles) {
               $WorkflowFile = $WfFile.FullName.Replace($PWD.Path + [System.IO.Path]::DirectorySeparatorChar, "").Replace("\", "/")
