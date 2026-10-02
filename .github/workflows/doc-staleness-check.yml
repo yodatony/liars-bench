@@ -124,15 +124,31 @@ jobs:
                   max_tokens = 4096
               } | ConvertTo-Json -Depth 10
 
-              $Response = Invoke-RestMethod `
-                  -Uri     "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions" `
-                  -Method  Post `
-                  -Headers @{
-                      "Authorization" = "Bearer $env:GEMINI_API_KEY"
-                      "Content-Type"  = "application/json"
-                  } `
-                  -Body $RequestBody `
-                  -ErrorAction Stop
+              # Gemini occasionally returns 503 (overloaded) - retry with backoff
+              $MaxAttempts = 5
+              for ($Attempt = 1; $Attempt -le $MaxAttempts; $Attempt++) {
+                  try {
+                      $Response = Invoke-RestMethod `
+                          -Uri     "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions" `
+                          -Method  Post `
+                          -Headers @{
+                              "Authorization" = "Bearer $env:GEMINI_API_KEY"
+                              "Content-Type"  = "application/json"
+                          } `
+                          -Body $RequestBody `
+                          -ErrorAction Stop
+                      break
+                  } catch {
+                      $StatusCode = $_.Exception.Response.StatusCode.value__
+                      if ($StatusCode -in 429, 500, 503 -and $Attempt -lt $MaxAttempts) {
+                          $Delay = [math]::Pow(2, $Attempt)
+                          Write-Host "  Gemini API returned $StatusCode, retrying in $Delay s (attempt $Attempt/$MaxAttempts)..."
+                          Start-Sleep -Seconds $Delay
+                      } else {
+                          throw
+                      }
+                  }
+              }
 
               $NewDocContent = $Response.choices[0].message.content
 
