@@ -63,7 +63,7 @@ jobs:
                   continue
               }
 
-              $BranchName = "doc-update/$WorkflowName-$(Get-Date -Format 'yyyyMMdd')"
+              $BranchName = "doc-update/$WorkflowName-$(Get-Date -Format 'yyyyMMdd-HHmm')"
 
               # Read current files
               $WorkflowContent = Get-Content $WorkflowFile -Raw
