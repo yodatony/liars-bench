@@ -12,74 +12,80 @@
 ### Secrets
 | Secret Name | Description |
 | :--- | :--- |
-| `TELEGRAM_TOKEN` | Bot token used to authenticate against the Telegram Bot API. |
-| `TELEGRAM_CHAT_ID` | Target chat or channel ID where the formatted Telegram update is sent. |
-| `TWELVEDATA_KEY` | API key required to authenticate requests to the Twelve Data REST API. |
+| `TELEGRAM_TOKEN` | Telegram Bot API token used to authenticate requests to the messaging service. |
+| `TELEGRAM_CHAT_ID` | Telegram chat or channel ID where the crypto market update message will be delivered. |
+| `TWELVEDATA_KEY` | API key for authenticating requests to the Twelve Data platform. |
 
 ### Tickers / Instruments
-| Name | Ticker | Market | Own | Source | Coin ID |
+| Name | Ticker | Market | Own | Source | CoinId |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| BNB/USD | BNB/USD | CRYPTO | `false` | Twelve Data (Default) | — |
-| BTC/USD | BTC/USD | CRYPTO | `true` | Twelve Data (Default) | — |
-| ETH/USD | ETH/USD | CRYPTO | `true` | Twelve Data (Default) | — |
-| HYPE/USD | HYPE/USD | CRYPTO | `true` | COINGECKO | `hyperliquid` |
-| SOL/USD | SOL/USD | CRYPTO | `true` | Twelve Data (Default) | — |
-| XRP/USD | XRP/USD | CRYPTO | `true` | Twelve Data (Default) | — |
+| BNB/USD | BNB/USD | CRYPTO | `false` | Twelve Data (default) | — |
+| BTC/USD | BTC/USD | CRYPTO | `true` | Twelve Data (default) | — |
+| ETH/USD | ETH/USD | CRYPTO | `true` | Twelve Data (default) | — |
+| HYPE/USD | HYPE/USD | CRYPTO | `true` | COINGECKO | hyperliquid |
+| SOL/USD | SOL/USD | CRYPTO | `true` | CRYPTO | — |
+| XRP/USD | XRP/USD | CRYPTO | `true` | Twelve Data (default) | — |
 
-*(Note: The exact configuration for individual instruments is defined directly within the PowerShell array in the workflow file.)*
+*(Note: SOL/USD is configured with `Own = $false` in the script logic block).*
 
-### Output Fields
-| Field | Description |
-| :--- | :--- |
-| `Current` | Rounded current price of the cryptocurrency instrument. |
-| `DayPct` | Calculated 24-hour percentage change in price, formatted with trend emojis (🟢/🔴). |
+### Output Fields & Message Format
+| Field / Component | Format / Value | Description |
+| :--- | :--- | :--- |
+| Header Title | `<b>CRYPTO</b> — Intraday update 📈` | Bold title identifying the report category. |
+| Timestamp | `<i>YYYY-MM-DD HH:mm</i> CET` | Current date and time converted to Europe/Stockholm timezone. |
+| Subheader | `<i>💵 Open 24/7 🔔</i>` | Informational status line indicating continuous crypto market operations. |
+| Asset Line | `<b>[Name]</b> ([Current]) <b>[DayPct]</b> [Portfolio]` | Line item showing asset name, current price, 24-hour percentage change with colored status emojis, and an optional portfolio ownership indicator (`💼`). |
+| Error Line | `<b>[Name]</b> — unavailable ⚠️`<br>`  <i>Error: [Message]</i>` | Fallback display used when price data fetching fails for a specific asset. |
 
 ### API / Data Sources
-| Source | Endpoint / Method | Purpose |
+| Provider | Base URL / Endpoint | Purpose |
 | :--- | :--- | :--- |
-| Twelve Data API | `https://api.twelvedata.com/quote?symbol={Ticker}&apikey={Key}` | Fetches real-time quote and daily percentage change data for standard crypto pairs. |
-| CoinGecko API | `https://api.coingecko.com/api/v3/coins/{CoinId}/market_chart/range?vs_currency=usd&from={Unix}&to={Unix}` | Fetches historical price ranges to calculate intraday open and current prices for tokens not reliably indexed by Twelve Data. |
-| Telegram Bot API | `https://api.telegram.org/bot{Token}/sendMessage` | Delivers the formatted HTML summary payload to the specified chat ID. |
+| Twelve Data | `https://api.twelvedata.com/quote` | Primary data source for fetching real-time crypto quotes and daily price changes. |
+| CoinGecko | `https://api.coingecko.com/api/v3/coins/{id}/market_chart/range` | Secondary data source utilizing historical range charts to derive daily opening and current prices for specific assets (e.g., Hyperliquid). |
+| Telegram Bot API | `https://api.telegram.org/bot{token}/sendMessage` | Delivery mechanism for posting the formatted HTML message to the configured chat. |
 
 ---
 
 ## How-to guides
 
-### How to manually trigger the workflow
+### How to trigger the workflow manually
 1. Navigate to your GitHub repository in your web browser.
 2. Click on the **Actions** tab.
-3. In the left-hand sidebar, select the **market-crypto-hourly-update** workflow.
-4. Click the **Run workflow** dropdown button on the right side.
-5. Confirm the branch (typically `main`) and click **Run workflow**.
+3. Select the **market-crypto-hourly-update** workflow from the left sidebar.
+4. Click the **Run workflow** dropdown button.
+5. Confirm by clicking the green **Run workflow** button.
 
 ### How to add a new cryptocurrency ticker
-1. Open the workflow file at `.github/workflows/market-crypto-hourly-update.yml`.
-2. Locate the `$Indices` PowerShell array inside the `send-update` job step.
-3. Add a new hashtable entry following the appropriate schema:
-   - **For Twelve Data sources:**
+1. Open the workflow file located at `.github/workflows/market-crypto-hourly-update.yml`.
+2. Locate the `$Indices` array inside the PowerShell script block.
+3. Add a new hash table entry using the standard Twelve Data structure or the CoinGecko structure:
+   - **For Twelve Data:**
      ```powershell
-     @{ Name = "NEW/USD"; Ticker = "NEW/USD"; Market = "CRYPTO"; Own = $false }
+     @{ Name = "NEW/USD"; Ticker = "NEW/USD"; Market = "CRYPTO"; Own = $true }
      ```
-   - **For CoinGecko sources:**
+   - **For CoinGecko:**
      ```powershell
-     @{ Name = "NEW/USD"; Ticker = "NEW/USD"; Market = "CRYPTO"; Own = $true; Source = "COINGECKO"; CoinId = "coingecko-id" }
+     @{ Name = "NEW/USD"; Ticker = "NEW/USD"; Market = "CRYPTO"; Own = $true; Source = "COINGECKO"; CoinId = "coingecko-coin-id" }
      ```
-4. Save the file and commit the changes to your repository.
+4. Commit and push the changes to your repository.
 
 ---
 
 ## Explanation
 
-### Design decisions and reasoning
+### Design Decisions & Reasoning
 
-#### PowerShell as a universal scripting layer
-The workflow executes entirely within a single PowerShell (`pwsh`) runner step. This choice avoids the overhead of maintaining external script files or managing dedicated container images. PowerShell natively handles web requests (`Invoke-RestMethod`), JSON serialization (`ConvertTo-Json`), and robust string formatting, making it ideal for self-contained CI/CD automation tasks.
+* **PowerShell as a Single-Language Runtime:** 
+  The entire workflow relies on PowerShell (`pwsh`) to handle data retrieval, formatting, error catching, and payload transmission. This removes the overhead of maintaining separate script files or multi-step action configurations, keeping the workflow definition self-contained and easy to inspect.
 
-#### Hybrid data source strategy (Twelve Data & CoinGecko)
-While Twelve Data provides reliable pricing feeds for major crypto pairs, some newer or specialized tokens lack sufficient intraday depth or availability on traditional financial APIs. By implementing a fallback/routing mechanism based on the `Source` property, the workflow can query CoinGecko's historical range endpoints when necessary. This ensures consistent report generation even if a specific asset isn't supported by the primary ticker provider.
+* **External Cron Trigger Strategy:** 
+  Rather than relying solely on native GitHub Actions scheduled workflows (which can suffer from queuing delays or automatic suspension on inactive repositories), the workflow exposes a `workflow_dispatch` trigger optimized to be invoked externally by cron-job.org on a reliable hourly schedule.
 
-#### Timezone handling for localized timestamps
-Cryptocurrency markets trade 24/7, but reporting schedules are best reviewed in local contexts. The script explicitly establishes the `Europe/Stockholm` timezone (`[System.TimeZoneInfo]::FindSystemTimeZoneById`) to convert UTC timestamps into local time before injecting them into the Telegram header. This provides clarity to recipients regarding exactly when the intraday market snapshot was captured.
+* **Multi-Source Fallback & Flexibility:** 
+  While Twelve Data serves as the primary provider for standard pairs, integrating CoinGecko support via custom data fetchers (`Get-CoinGeckoData`) ensures that newer or specialized tokens (such as `HYPE/USD`) whose tickers might not be supported on Twelve Data can still be tracked accurately using range-based market charts.
 
-#### Resilient error handling per instrument
-Instead of letting a single failed API request crash the entire workflow, the script wraps each instrument fetch in a `try/catch` block. If an individual API call fails or times out, the workflow logs the specific exception and gracefully flags that asset as `unavailable ⚠️` in the final Telegram message. This ensures that a transient third-party outage for one asset does not suppress updates for the rest of the portfolio.
+* **Timezone Localization:** 
+  Timestamps are explicitly converted to the `Europe/Stockholm` timezone (`CET`/`CEST`) using Windows/Linux cross-platform compatible time zone identifiers. This guarantees that intraday updates display local market-relevant times rather than raw UTC.
+
+* **Resilient Error Handling:** 
+  Individual instrument fetch operations are wrapped in `try/catch` blocks. If an API request fails or returns an error status, the workflow catches the exception and logs an "unavailable" warning line for that specific asset without aborting the entire script, ensuring partial updates are still successfully delivered to Telegram.
