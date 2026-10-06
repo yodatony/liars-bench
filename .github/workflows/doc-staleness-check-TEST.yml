@@ -1,0 +1,656 @@
+name: doc-staleness-check
+
+on:
+  workflow_dispatch:
+    inputs:
+      workflow_name:
+        description: "Only check this workflow (file name without .yml). Leave empty to check all."
+        required: false
+        type: string
+  schedule:
+    - cron: '55 2 1 * *'   # 1st of every month at 02:55 UTC
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  check-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check staleness and rewrite docs via Gemini
+        shell: pwsh
+        env:
+          GH_TOKEN:       ${{ secrets.GITHUB_TOKEN }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          REPO:           ${{ github.repository }}
+          WORKFLOW_NAME:  ${{ github.event.inputs.workflow_name }}
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          $OpenPRs = gh pr list --repo $env:REPO --state open --json headRefName,number | ConvertFrom-Json
+
+          $WorkflowFiles = Get-ChildItem ".github/workflows/*.yml"
+          if ($env:WORKFLOW_NAME) {
+              $WorkflowFiles = $WorkflowFiles | Where-Object { $_.BaseName -eq $env:WORKFLOW_NAME }
+              if (-not $WorkflowFiles) {
+                  Write-Host "No workflow file named '$env:WORKFLOW_NAME' found."
+              }
+          }
+
+          foreach ($WfFile in $WorkflowFiles) {
+              $WorkflowFile = $WfFile.FullName.Replace($PWD.Path + [System.IO.Path]::DirectorySeparatorChar, "").Replace("\", "/")
+              $WorkflowName = $WfFile.BaseName
+              $DocFile      = "docs/test/$WorkflowName.md"
+
+              Write-Host "Checking: $WorkflowFile"
+
+              # Get the last commit date for the workflow and the doc
+              $WorkflowDate = git log -1 --format="%ci" -- $WorkflowFile 2>$null
+              $DocDate      = git log -1 --format="%ci" -- $DocFile      2>$null
+
+              if (-not $WorkflowDate) {
+                  Write-Host "  No commits found for workflow, skipping."
+                  continue
+              }
+
+              # If the doc has never been committed, or workflow is newer than doc -> stale
+              $IsStale = (-not $DocDate) -or ([datetime]$WorkflowDate -gt [datetime]$DocDate)
+              Write-Host "  Workflow last changed: $WorkflowDate"
+              Write-Host "  Doc last changed:      $(if ($DocDate) { $DocDate } else { 'never' })"
+              Write-Host "  Stale: $IsStale"
+
+              if (-not $IsStale) { continue }
+
+              # If a PR is already open for this doc, only refresh it if the workflow changed
+              # since the PR branch's own last commit (not just since main's unmerged doc)
+              $ExistingPR = $OpenPRs | Where-Object { $_.headRefName -like "doc-update/$WorkflowName-*" } | Select-Object -First 1
+
+              if ($ExistingPR) {
+                  $BranchName   = $ExistingPR.headRefName
+                  git fetch origin $BranchName 2>$null
+                  $PRBranchDate = git log -1 --format="%ci" "origin/$BranchName" 2>$null
+
+                  if ($PRBranchDate -and [datetime]$WorkflowDate -le [datetime]$PRBranchDate) {
+                      Write-Host "  Open PR #$($ExistingPR.number) is already up to date, skipping."
+                      continue
+                  }
+
+                  Write-Host "  Open PR #$($ExistingPR.number) exists but the workflow changed since its last update, refreshing it."
+              } else {
+                  $BranchName = "doc-update/$WorkflowName-$(Get-Date -Format 'yyyyMMdd-HHmm')"
+              }
+
+              # Read current files
+              $WorkflowContent = Get-Content $WorkflowFile -Raw
+              $CurrentDoc      = if (Test-Path $DocFile) { Get-Content $DocFile -Raw } else { "" }
+              $Today           = (Get-Date -Format 'yyyy-MM-dd')
+
+              # Recent commits to the workflow since the doc was last updated
+              $CommitLines = if ($DocDate) {
+                  git log --oneline --after="$DocDate" -- $WorkflowFile 2>$null
+              } else {
+                  git log --oneline -- $WorkflowFile 2>$null
+              }
+              $CommitList = ($CommitLines | Where-Object { $_ -ne "" }) -join "`n"
+
+              # Call Gemini's free, OpenAI-compatible API (GitHub Models was retired 2026-07-30)
+              $DocContext = if ($CurrentDoc) {
+                  "You are updating an existing documentation file. Preserve all existing Tutorials, Explanation and How-to content unless the workflow makes it incorrect."
+              } else {
+                  "You are creating a new documentation file from scratch. Write complete Tutorials, Explanation and How-to sections based on the workflow."
+              }
+
+              # Ported from agents/diataxis-doc-writer.agent.md as a plain string array (not a here-string:
+              # PowerShell requires the closing '@ at column 0, which a YAML block scalar can't allow here).
+              $DiataxisAgentInstructions = @(
+                  '# diataxis-doc-writer instructions',
+                  '',
+                  'You are an expert documentation specialist with deep knowledge of the Diátaxis documentation framework. Your expertise spans all four documentation types: Tutorials, How-to guides, Reference, and Explanations. You understand that great documentation serves different user needs with different document types, each with its own structure, tone, and purpose.',
+                  '',
+                  '## Your Primary Mission',
+                  '',
+                  'Your mission is to help users create, assess, and organize documentation that genuinely serves their readers. You do this by:',
+                  '1. Understanding what the user is trying to accomplish with their documentation',
+                  '2. Determining which Diátaxis type(s) best serve that goal',
+                  '3. Creating or reviewing documentation that follows Diátaxis principles rigorously',
+                  '4. Ensuring documentation quality through Diátaxis-specific criteria',
+                  '',
+                  'You succeed when documentation clearly serves its intended audience and follows its Diátaxis type''s principles without mixing incompatible types.',
+                  '',
+                  '## The Four Diátaxis Documentation Types',
+                  '',
+                  '**Tutorials** (Learning-oriented):',
+                  '- Purpose: Introduce beginners to new skills through hands-on experience',
+                  '- User mindset: "I want to learn"',
+                  '- Structure: Concrete, specific steps leading to a working result',
+                  '- Tone: Encouraging, patient, explicitly teach reasoning',
+                  '- Anti-patterns: Avoiding explanations of WHY; making assumptions about prior knowledge',
+                  '',
+                  '**How-to guides** (Goal-oriented):',
+                  '- Purpose: Guide competent users safely through real-world tasks',
+                  '- User mindset: "I want to accomplish something specific"',
+                  '- Structure: Problem → Steps → Result (assumes competence)',
+                  '- Tone: Direct, practical, action-focused',
+                  '- Anti-patterns: Too much conceptual explanation; step-by-step for beginners',
+                  '',
+                  '**Reference** (Information-oriented):',
+                  '- Purpose: Describe machinery (APIs, commands, configuration)',
+                  '- User mindset: "I need factual information" or "I need to look something up"',
+                  '- Structure: Austere, consistent, organized for lookup',
+                  '- Tone: Objective, technical, precise',
+                  '- Anti-patterns: Explanations of concepts; examples that teach rather than illustrate',
+                  '',
+                  '**Explanation** (Understanding-oriented):',
+                  '- Purpose: Help users understand WHY things are the way they are',
+                  '- User mindset: "I want to understand"',
+                  '- Structure: Discursive, connects concepts, explores rationale',
+                  '- Tone: Reflective, exploratory, educational',
+                  '- Anti-patterns: Task-focused steps; attempting to be comprehensive like reference',
+                  '',
+                  '## Your Operational Framework',
+                  '',
+                  '### Step 1: Clarify User Intent',
+                  'When a user requests documentation work, determine:',
+                  '- Are they creating new documentation or reviewing/classifying existing?',
+                  '- What problem does the reader have?',
+                  '- What does the reader already know?',
+                  '- What should the reader be able to do after engaging with this documentation?',
+                  '',
+                  '### Step 2: Select Documentation Type(s)',
+                  'For creation tasks:',
+                  '- If the goal is skill acquisition for beginners → Tutorial',
+                  '- If the goal is accomplishing a specific task → How-to',
+                  '- If the goal is factual information lookup → Reference',
+                  '- If the goal is understanding concepts/rationale → Explanation',
+                  '- If user is uncertain, ask clarifying questions before proceeding',
+                  '',
+                  'For review/classification tasks:',
+                  '- Analyze content against all four types',
+                  '- Identify which type(s) are present',
+                  '- Flag mixed types that should be separated',
+                  '- Assess whether the chosen type is appropriate for the user''s actual need',
+                  '',
+                  '### Step 3: Create Documentation Following Type-Specific Rules',
+                  '',
+                  '**For Tutorials:**',
+                  '1. Start with a concrete goal the learner will accomplish',
+                  '2. Assume minimal prior knowledge; don''t skip foundational steps',
+                  '3. Use real-world, engaging examples',
+                  '4. Include explanations of WHY each step matters',
+                  '5. End with a working result the learner can verify',
+                  '6. Validate: Could a complete beginner follow this and succeed?',
+                  '',
+                  '**For How-to guides:**',
+                  '1. Lead with the problem it solves and prerequisites',
+                  '2. Assume reader competence in related areas',
+                  '3. Provide step-by-step instructions',
+                  '4. Include explanations only where non-obvious',
+                  '5. Account for common variations or gotchas',
+                  '6. Validate: Does a competent user get a working result quickly?',
+                  '',
+                  '**For Reference:**',
+                  '1. Organize for lookup (alphabetical, logical grouping, search-friendly)',
+                  '2. Describe what each element is and what it does',
+                  '3. Include syntax/structure with accurate examples',
+                  '4. Document parameters, return values, exceptions',
+                  '5. Avoid narrative explanations; stick to facts',
+                  '6. Validate: Can users find what they need quickly? Is it accurate?',
+                  '',
+                  '**For Explanations:**',
+                  '1. Start with the "why" question being answered',
+                  '2. Build concepts progressively, connecting them',
+                  '3. Explore multiple perspectives or tradeoffs',
+                  '4. Use analogies and real-world context',
+                  '5. Discuss design decisions and their consequences',
+                  '6. Validate: Would someone reading this understand the reasoning?',
+                  '',
+                  '### Step 4: Quality Assessment',
+                  '',
+                  'Before delivering documentation, verify:',
+                  '- **Type coherence**: Does the content stay within its chosen type?',
+                  '- **Audience match**: Is the content appropriate for its intended reader?',
+                  '- **Completeness**: Would the reader accomplish the goal (tutorial/how-to) or understand the concept (explanation/reference)?',
+                  '- **Clarity**: Could a member of the target audience follow this?',
+                  '- **Accuracy**: Is the factual content correct?',
+                  '- **No mixing**: Are you accidentally combining tutorial steps with reference information, or explanation with how-to?',
+                  '',
+                  '### Step 5: Deliver Output',
+                  '',
+                  'Provide:',
+                  '1. The documentation content itself',
+                  '2. A brief explanation of which Diátaxis type(s) you''re using and why',
+                  '3. Guidance on where this documentation fits within a larger documentation set',
+                  '4. Any recommendations for companion documentation (e.g., "This tutorial should link to the reference for X", "After this explanation, users may want the how-to for Y")',
+                  '',
+                  '## Edge Cases and Decision Making',
+                  '',
+                  '**Mixed requests**: If a user asks for a single document that seems to require multiple types (e.g., "teach how to use AND explain why"), recommend separating into multiple documents. Explain why mixing weakens both purposes.',
+                  '',
+                  '**Ambiguous scope**: If a user says "write docs about authentication" without specifying the documentation type, ask clarifying questions:',
+                  '- Who are the readers? (determines tutorial vs reference vs explanation)',
+                  '- What''s their goal? (are they learning, looking up, or understanding architecture?)',
+                  '- Do you want multiple types organized together?',
+                  '',
+                  '**Migrating existing docs**: If reviewing existing documentation for Diátaxis principles:',
+                  '1. Identify which type(s) the content currently is',
+                  '2. Compare against what it *should* be (based on user need)',
+                  '3. Flag sections that violate the chosen type''s principles',
+                  '4. Recommend restructuring, splitting, or rewriting',
+                  '',
+                  '**Cultural/domain differences**: Documentation conventions vary by domain (academic vs corporate, open source vs enterprise). Ask about the organization''s conventions if unclear, but prioritize Diátaxis principles—they transcend domains.',
+                  '',
+                  '## Quality Control Checklist',
+                  '',
+                  'Before finalizing any documentation:',
+                  '- [ ] The documentation type is explicitly stated and justified',
+                  '- [ ] Content adheres to the chosen type''s structure and tone',
+                  '- [ ] No content from other types is accidentally mixed in',
+                  '- [ ] Target audience is clear and content matches that audience''s level',
+                  '- [ ] If examples are included, they serve the type''s purpose (e.g., reference examples illustrate, tutorial examples teach)',
+                  '- [ ] Links or references to related documentation are appropriate',
+                  '- [ ] Language is clear, jargon is defined, or specialized terms are explained',
+                  '',
+                  '## When to Ask for Clarification',
+                  '',
+                  'Do not proceed without clarity on:',
+                  '- The intended audience and their current knowledge level',
+                  '- The reader''s goal (what should they be able to do/understand after reading?)',
+                  '- If creating reference: the complete list of items to document',
+                  '- If the organization has existing documentation standards or examples',
+                  '- Scope: are you documenting a feature, a system, a concept?',
+                  '',
+                  'Asking these questions upfront prevents wasted effort on misaligned documentation.',
+                  '',
+                  '## Diagrams',
+                  '',
+                  'Before producing any Markdown that may include diagrams, check whether the `mermaid-diagrams` skill is available in this session. If it is, use it for all diagrams — flowcharts, sequence diagrams, architecture overviews, decision trees, etc. Never fall back to ASCII art while `mermaid-diagrams` is available.',
+                  '',
+                  'If `mermaid-diagrams` is not available, use plain prose to describe relationships and structure rather than ASCII art, which is harder to read and maintain.',
+                  '',
+                  '## Communication Style',
+                  '',
+                  '- Be direct about Diátaxis principles; users often don''t know them but benefit from understanding them',
+                  '- Explain *why* a certain type is recommended ("This is a how-to because you''re teaching the steps to accomplish a specific task")',
+                  '- Show examples of how mixing types weakens documentation',
+                  '- Encourage users to think about their reader''s actual need first, then choose type',
+                  '- If user disagrees with a type recommendation, listen to their reasoning and adjust if it reveals a genuine user need you missed'
+              )
+
+              # mermaid-diagrams skill, embedded as base64: its content is full of backticks and mixed
+              # quotes (Mermaid init directives, inline code) that would be impractical to escape as
+              # literal PowerShell strings, so it's encoded/decoded instead to preserve it exactly.
+              $MermaidSkillBase64 = -join @(
+                  'IyBNZXJtYWlkIERpYWdyYW1zIOKAlCBBdXRob3JpbmcgJiBSZXZpZXcgU2tpbGwNCg0KTWVybWFpZCBpcyBhIGRpYWdyYW1zLWFz',
+                  'LWNvZGUgbGFuZ3VhZ2Ugd2hvc2UgZGlhZ3JhbXMgbGl2ZSBpbnNpZGUgZmVuY2VkDQpgIGBgYG1lcm1haWQgYCBibG9ja3MgaW4g',
+                  'TWFya2Rvd24uIFdlbGwtd3JpdHRlbiBNZXJtYWlkIGlzIHNtYWxsLCB1bmFtYmlndW91cywNCnJlbmRlcnMgdGhlIHNhbWUgb24g',
+                  'ZXZlcnkgc3VwcG9ydGVkIGhvc3QsIGFuZCByZWFkcyBhbG1vc3QgYXMgd2VsbCBhcyBwcm9zZS4NCkJhZGx5IHdyaXR0ZW4gTWVy',
+                  'bWFpZCBzaWxlbnRseSBicmVha3Mgb24gb25lIGhvc3QsIHdvcmtzIG9uIGFub3RoZXIsIGFuZA0KZ3Jvd3MgaW50byBhIHdhbGwg',
+                  'b2YgYXJyb3dzIHRoYXQgbm9ib2R5IGNhbiBtYWludGFpbi4NCg0KVGhpcyBza2lsbCBtYWtlcyBhbiBhZ2VudCBnb29kIGF0IHR3',
+                  'byB0aGluZ3M6DQoNCjEuICoqQXV0aG9yaW5nKiogYSBNZXJtYWlkIGRpYWdyYW0gaW5zaWRlIGEgTWFya2Rvd24gZG9jdW1lbnQg',
+                  'ZnJvbSBhIHVzZXIncw0KICAgbmF0dXJhbC1sYW5ndWFnZSBpbnRlbnQuDQoyLiAqKlJldmlld2luZyBhbmQgZml4aW5nKiogYW4g',
+                  'ZXhpc3RpbmcgYCBgYGBtZXJtYWlkIGAgYmxvY2s6IHN5bnRheCwNCiAgIHNlbWFudGljcywgYWNjZXNzaWJpbGl0eSwgYW5kIGhv',
+                  'c3QgY29tcGF0aWJpbGl0eS4NCg0KSXQgZG9lcyAqKm5vdCoqIGNvdmVyIGxvY2FsIHJlbmRlcmluZyBvciBDSSB2YWxpZGF0aW9u',
+                  'IG9mIGRpYWdyYW1zDQoobm8gYG1lcm1haWQtY2xpYCwgbm8gaGVhZGxlc3MtYnJvd3NlciBjaGVja3MpLiBWYWxpZGF0aW9uIGhl',
+                  'cmUgbWVhbnMNCnN0cnVjdHVyYWwgcmV2aWV3IGJ5IHRoZSBhZ2VudCBhZ2FpbnN0IHRoZSBydWxlcyBpbiB0aGlzIHNraWxsLg0K',
+                  'DQotLS0NCg0KIyMgV2hlbiB0byBVc2UgVGhpcyBTa2lsbA0KDQpBY3RpdmF0ZSB0aGlzIHNraWxsIHdoZW4gdGhlIHVzZXIgYXNr',
+                  'cyB5b3UgdG8gZG8gYW55IG9mIHRoZSBmb2xsb3dpbmc6DQoNCi0gQWRkIGEgZGlhZ3JhbSB0byBhIE1hcmtkb3duIGRvY3VtZW50',
+                  'IChSRUFETUUsIGRvY3Mgc2l0ZSwgaXNzdWUsIFBSDQogIGRlc2NyaXB0aW9uLCBBRFIsIGRlc2lnbiBub3RlKS4NCi0gVHVybiBh',
+                  'IHRleHR1YWwgZGVzY3JpcHRpb24gb2YgYSBwcm9jZXNzLCBpbnRlcmFjdGlvbiwgc2NoZW1hLCBzdGF0ZSBtYWNoaW5lLA0KICBz',
+                  'Y2hlZHVsZSwgaGllcmFyY2h5LCBvciB0aW1lbGluZSBpbnRvIGEgZGlhZ3JhbS4NCi0gRml4LCBjbGVhbiB1cCwgb3IgcmV2aWV3',
+                  'IGEgYCBgYGBtZXJtYWlkIGAgYmxvY2sgdGhhdCBhbHJlYWR5IGV4aXN0cy4NCi0gUGljayBiZXR3ZWVuIE1lcm1haWQgZGlhZ3Jh',
+                  'bSB0eXBlcyBmb3IgYSBnaXZlbiBpZGVhLg0KLSBDb25maWd1cmUgdGhlbWluZywgYCUle2luaXR9JSVgIGRpcmVjdGl2ZXMsIG9y',
+                  'IGFjY2Vzc2liaWxpdHkgZm9yIGEgTWVybWFpZA0KICBkaWFncmFtLg0KLSBNYWtlIGFuIGV4aXN0aW5nIE1lcm1haWQgZGlhZ3Jh',
+                  'bSByZW5kZXIgY29ycmVjdGx5IG9uIEdpdEh1YiwgVlMgQ29kZSwgTWtEb2NzDQogIChNYXRlcmlhbCksIG9yIERvY3VzYXVydXMu',
+                  'DQoNCiMjIyBOb24tdHJpZ2dlcnMg4oCUIGRvIE5PVCB1c2UgdGhpcyBza2lsbA0KDQp8IFJlcXVlc3QgfCBXaHkgaXQgZG9lc24n',
+                  'dCBmaXQgfCBJbnN0ZWFkIHwNCnwtLS18LS0tfC0tLXwNCnwgIkRyYXcgdGhpcyB3aXRoIFBsYW50VU1MIiB8IERpZmZlcmVudCB0',
+                  'b29sIGFuZCBzeW50YXggfCBEZWNsaW5lOyBvciBvZmZlciB0byB0cmFuc2xhdGUgdG8gTWVybWFpZCBpZiBhY2NlcHRhYmxlIHwN',
+                  'CnwgIkdlbmVyYXRlIGEgUE5HIGFyY2hpdGVjdHVyZSBkaWFncmFtIiB8IEltYWdlIGdlbmVyYXRpb24sIG5vdCBkaWFncmFtcy1h',
+                  'cy1jb2RlIHwgQSBkcmF3aW5nL2ltYWdlIHRvb2wgfA0KfCAiQ3JlYXRlIGEgR3JhcGh2aXogYC5kb3RgIGZpbGUiIHwgRGlmZmVy',
+                  'ZW50IERTTCB8IEdyYXBodml6LXNwZWNpZmljIGd1aWRhbmNlIHwNCnwgIlZhbGlkYXRlIG15IG1lcm1haWQgZGlhZ3JhbXMgaW4g',
+                  'Q0kiIHwgVG9vbGluZy9yZW5kZXJpbmcsIG5vdCBpbiB0aGlzIHNraWxsJ3Mgc2NvcGUgfCBQb2ludCB0byBgbWVybWFpZC1jbGlg',
+                  'IGRvY3MgZGlyZWN0bHkgfA0KDQotLS0NCg0KIyMgVGhlIFVuaXZlcnNhbCBFbWJlZCBQYXR0ZXJuDQoNCkV2ZXJ5IE1lcm1haWQg',
+                  'ZGlhZ3JhbSBpbiBNYXJrZG93biB1c2VzIHRoaXMgZXhhY3Qgc2tlbGV0b246DQoNCmBgYGBtYXJrZG93bg0KYGBgbWVybWFpZA0K',
+                  'JSV7aW5pdDogeyd0aGVtZSc6J2RlZmF1bHQnfX0lJQ0KZmxvd2NoYXJ0IExSDQogICAgYWNjVGl0bGU6IFNob3J0IHRpdGxlIGZv',
+                  'ciBzY3JlZW4gcmVhZGVycw0KICAgIGFjY0Rlc2NyOiBPbmUtc2VudGVuY2UgZGVzY3JpcHRpb24gb2Ygd2hhdCB0aGlzIGRpYWdy',
+                  'YW0gc2hvd3MuDQoNCiAgICBBW1N0YXJ0XSAtLT4gQntEZWNpc2lvbn0NCiAgICBCIC0tIHllcyAtLT4gQ1tEbyB0aGUgdGhpbmdd',
+                  'DQogICAgQiAtLSBubyAgLS0+IERbU3RvcF0NCmBgYA0KYGBgYA0KDQpSdWxlcyB0aGF0IGFwcGx5IHRvIGV2ZXJ5IGRpYWdyYW0g',
+                  'dHlwZToNCg0KMS4gVGhlIGZlbmNlIGlzIGV4YWN0bHkgYGAgYGBgbWVybWFpZCBgYCAobG93ZXJjYXNlLCBubyBzcGFjZXMpLg0K',
+                  'Mi4gVGhlICoqZmlyc3Qgbm9uLWNvbW1lbnQsIG5vbi1kaXJlY3RpdmUgbGluZSoqIG11c3QgYmUgdGhlIGRpYWdyYW0tdHlwZQ0K',
+                  'ICAgaGVhZGVyOiBgZmxvd2NoYXJ0IExSYCwgYHNlcXVlbmNlRGlhZ3JhbWAsIGBjbGFzc0RpYWdyYW1gLCBgc3RhdGVEaWFncmFt',
+                  'LXYyYCwNCiAgIGBlckRpYWdyYW1gLCBgZ2FudHRgLCBgbWluZG1hcGAsIGB0aW1lbGluZWAsIGBDNENvbnRleHRgLCBldGMuDQoz',
+                  'LiBBbiBvcHRpb25hbCBgJSV7aW5pdDogeyAuLi4gfX0lJWAgZGlyZWN0aXZlIG11c3QgY29tZSAqKmJlZm9yZSoqIHRoZQ0KICAg',
+                  'aGVhZGVyIGxpbmUuDQo0LiBgYWNjVGl0bGVgIGFuZCBgYWNjRGVzY3JgICh3aGVuIHN1cHBvcnRlZCBieSB0aGUgZGlhZ3JhbSB0',
+                  'eXBlKSBnbw0KICAgaW1tZWRpYXRlbHkgYWZ0ZXIgdGhlIGhlYWRlci4NCjUuIEluZGVudGF0aW9uIGluc2lkZSB0aGUgYmxvY2sg',
+                  'aXMgc3R5bGlzdGljIOKAlCBNZXJtYWlkIGRvZXMgbm90IGNhcmUgYWJvdXQNCiAgIGluZGVudCB3aWR0aCwgYnV0IGNvbnNpc3Rl',
+                  'bmN5IGhlbHBzIHJldmlld2Vycy4NCjYuIE5ldmVyIG1peCB0d28gZGlhZ3JhbSB0eXBlcyBpbnNpZGUgb25lIGJsb2NrLiBPbmUg',
+                  'aWRlYSBwZXIgZGlhZ3JhbS4NCg0KLS0tDQoNCiMjIFBpY2tpbmcgdGhlIFJpZ2h0IERpYWdyYW0gVHlwZQ0KDQpVc2UgdGhpcyBk',
+                  'ZWNpc2lvbiB0cmVlLiBEZWZlciB0bw0KW2ByZWZlcmVuY2VzL2RpYWdyYW0tdHlwZXMubWRgXShyZWZlcmVuY2VzL2RpYWdyYW0t',
+                  'dHlwZXMubWQpIGZvciB0aGUgZnVsbA0KbWF0cml4IGFuZCBvbmUtbGluZSBleGFtcGxlcyBwZXIgdHlwZS4NCg0KfCBVc2VyJ3Mg',
+                  'aW50ZW50IHwgRGlhZ3JhbSB8IE1lcm1haWQgaGVhZGVyIHwNCnwtLS18LS0tfC0tLXwNCnwgQnJhbmNoaW5nIHByb2Nlc3MsIHBp',
+                  'cGVsaW5lLCBkZWNpc2lvbiBmbG93IHwgRmxvd2NoYXJ0IHwgYGZsb3djaGFydCBMUmAgLyBgVERgIHwNCnwgT3JkZXJlZCBpbnRl',
+                  'cmFjdGlvbiBiZXR3ZWVuIGFjdG9ycy9zZXJ2aWNlcyBvdmVyIHRpbWUgfCBTZXF1ZW5jZSB8IGBzZXF1ZW5jZURpYWdyYW1gIHwN',
+                  'CnwgT2JqZWN0LW9yaWVudGVkIHN0cnVjdHVyZSwgdHlwZXMgYW5kIHRoZWlyIHJlbGF0aW9uc2hpcHMgfCBDbGFzcyB8IGBjbGFz',
+                  'c0RpYWdyYW1gIHwNCnwgTGlmZWN5Y2xlLCBtb2RlcywgZmluaXRlIHN0YXRlIG1hY2hpbmUgfCBTdGF0ZSB8IGBzdGF0ZURpYWdy',
+                  'YW0tdjJgIHwNCnwgRGF0YSBtb2RlbCwgdGFibGVzIGFuZCBjYXJkaW5hbGl0aWVzIHwgRVIgfCBgZXJEaWFncmFtYCB8DQp8IFNj',
+                  'aGVkdWxlLCBtaWxlc3RvbmVzLCB0YXNrIGRlcGVuZGVuY2llcyB8IEdhbnR0IHwgYGdhbnR0YCB8DQp8IEhpZXJhcmNoeSByb290',
+                  'ZWQgYXQgb25lIGlkZWEgfCBNaW5kbWFwIHwgYG1pbmRtYXBgIHwNCnwgQ2hyb25vbG9naWNhbCBldmVudHMgYWxvbmcgYW4gYXhp',
+                  'cyB8IFRpbWVsaW5lIHwgYHRpbWVsaW5lYCB8DQp8IFN5c3RlbSBjb250ZXh0IC8gY29udGFpbmVycyAvIGNvbXBvbmVudHMgfCBD',
+                  'NCB8IGBDNENvbnRleHRgIChvciBgQzRDb250YWluZXJgL2BDNENvbXBvbmVudGAvYEM0RHluYW1pY2ApIHwNCg0KSWYgdHdvIHR5',
+                  'cGVzIGZpdCwgcHJlZmVyIHRoZSBvbmUgdGhhdCBiZXN0IG1hdGNoZXMgdGhlICoqcHJpbWFyeSBheGlzIG9mIHRoZQ0KaWRlYSoq',
+                  'IOKAlCB0aW1lIOKGkiBzZXF1ZW5jZS90aW1lbGluZS9nYW50dDsgc3RydWN0dXJlIOKGkiBjbGFzcy9FUi9DNDsgYmVoYXZpb3Vy',
+                  'IOKGkg0Kc3RhdGUvZmxvd2NoYXJ0OyBoaWVyYXJjaHkg4oaSIG1pbmRtYXAuDQoNCi0tLQ0KDQojIyBDb3JlIEF1dGhvcmluZyBQ',
+                  'cmluY2lwbGVzDQoNCkZvbGxvdyB0aGVzZSBudW1iZXJlZCBydWxlcyB3aGVuIHdyaXRpbmcgYW55IE1lcm1haWQgZGlhZ3JhbToN',
+                  'Cg0KMS4gKipPbmUgZGlhZ3JhbSwgb25lIGlkZWEuKiogSWYgdGhlIGRpYWdyYW0gbmVlZHMgYSBwYXJhZ3JhcGggb2YgY2F2ZWF0',
+                  'cyB0bw0KICAgbWFrZSBzZW5zZSwgc3BsaXQgaXQgaW50byBtdWx0aXBsZSBkaWFncmFtcyBvciBtb3ZlIGRldGFpbCBpbnRvIHBy',
+                  'b3NlLg0KDQoyLiAqKlBpY2sgYSBkaXJlY3Rpb24gZGVsaWJlcmF0ZWx5LioqIGBMUmAgKGxlZnQtdG8tcmlnaHQpIHJlYWRzIHdl',
+                  'bGwgaW4gd2lkZQ0KICAgZG9jdW1lbnRhdGlvbiBwYWdlczsgYFREYCAvIGBUQmAgKHRvcC1kb3duKSByZWFkcyB3ZWxsIG9uIG5h',
+                  'cnJvdyBwYWdlcyBhbmQNCiAgIGluIGlzc3VlIGNvbW1lbnRzLiBCZSBjb25zaXN0ZW50IHdpdGhpbiBhIGRvY3VtZW50Lg0KDQoz',
+                  'LiAqKlNob3J0IElEcywgaHVtYW4tcmVhZGFibGUgbGFiZWxzLioqIFVzZSBzaG9ydCBBU0NJSSBJRHMgbGlrZSBgQWAsIGBzdmNg',
+                  'LA0KICAgYGRiYCBhbmQgcHV0IHRoZSBwcm9zZSBpbiBsYWJlbHM6IGBzdmNbIk9yZGVyIHNlcnZpY2UiXWAuIElEcyBhcHBlYXIg',
+                  'aW4NCiAgIGVkZ2UgZGVmaW5pdGlvbnM7IGxvbmcgSURzIG1ha2UgZWRnZXMgdW5yZWFkYWJsZS4NCg0KNC4gKipRdW90ZSBsYWJl',
+                  'bHMgd2hlbmV2ZXIgaW4gZG91YnQuKiogQW55IGxhYmVsIHdpdGggc3BhY2VzLCBwdW5jdHVhdGlvbiwgb3INCiAgIHJlc2VydmVk',
+                  'IHdvcmRzIChgZW5kYCwgYHN1YmdyYXBoYCwgYGNsaWNrYCwgYGRpcmVjdGlvbmAsIGBjbGFzc2ApIG11c3QgYmUNCiAgIHF1b3Rl',
+                  'ZDogYEFbIlNvbWUgKHRyaWNreSkgbGFiZWwiXWAuDQoNCjUuICoqRXNjYXBlIHByb2JsZW0gY2hhcmFjdGVycy4qKiBQYXJlbnRo',
+                  'ZXNlcywgYDxgLCBgPmAsIGAjYCwgYW5kIGAiYCBpbnNpZGUNCiAgIGxhYmVscyBuZWVkIGVpdGhlciBxdW90aW5nIChgIuKApiJg',
+                  'KSBvciBIVE1MIGVudGl0aWVzIChgJmx0O2AsIGAmZ3Q7YCwNCiAgIGAmcXVvdDtgLCBgJiMzNTtgKS4gVW5lc2NhcGVkIGAoYCBp',
+                  'bnNpZGUgYW4gdW5xdW90ZWQgZmxvd2NoYXJ0IGxhYmVsIGlzDQogICB0aGUgc2luZ2xlIG1vc3QgY29tbW9uIGJyZWFrYWdlLg0K',
+                  'DQo2LiAqKk9uZSBlZGdlIHN0eWxlIHBlciBkaWFncmFtIGZhbWlseS4qKiBEb24ndCBtaXggYC0+PmAsIGAtLT4+YCwgYW5kIGAt',
+                  'eGANCiAgIGFycm93IHZhcmlhbnRzIGF0IHJhbmRvbSDigJQgZWFjaCBtZWFucyBzb21ldGhpbmcgc3BlY2lmaWMgaW5zaWRlIGl0',
+                  'cw0KICAgZGlhZ3JhbSB0eXBlIChzZWUgcGVyLXR5cGUgcmVmZXJlbmNlcykuDQoNCjcuICoqTm8gdHlwZSBtaXhpbmcuKiogQSBz',
+                  'aW5nbGUgYCBgYGBtZXJtYWlkIGAgYmxvY2sgaGFzIGV4YWN0bHkgb25lIGRpYWdyYW0NCiAgIGhlYWRlci4gSWYgeW91IG5lZWQg',
+                  'YSBzZXF1ZW5jZSBkaWFncmFtIGFuZCBhIGZsb3djaGFydCwgdXNlIHR3byBibG9ja3MuDQoNCjguICoqQWNjZXNzaWJpbGl0eSBp',
+                  'cyBub3Qgb3B0aW9uYWwuKiogQW55IG5vbi1kZWNvcmF0aXZlIGRpYWdyYW0gZ2V0cyBhbg0KICAgYGFjY1RpdGxlYCBhbmQgYW4g',
+                  'YGFjY0Rlc2NyYC4gU2VlDQogICBbYHJlZmVyZW5jZXMvYWNjZXNzaWJpbGl0eS5tZGBdKHJlZmVyZW5jZXMvYWNjZXNzaWJpbGl0',
+                  'eS5tZCkuDQoNCjkuICoqVGhlbWluZyBpcyBsYXN0LCBub3QgZmlyc3QuKiogU3RhcnQgd2l0aCB0aGUgZGVmYXVsdCB0aGVtZS4g',
+                  'T25seSByZWFjaA0KICAgZm9yIGAlJXtpbml0fSUlYCwgYHRoZW1lYCwgYGxvb2s6IGhhbmREcmF3bmAsIG9yIGN1c3RvbSBgdGhl',
+                  'bWVWYXJpYWJsZXNgDQogICB3aGVuIHRoZSBkZWZhdWx0IGlzIGFjdHVhbGx5IGluc3VmZmljaWVudC4gU2VlDQogICBbYHJlZmVy',
+                  'ZW5jZXMvdGhlbWluZy1hbmQtY29uZmlnLm1kYF0ocmVmZXJlbmNlcy90aGVtaW5nLWFuZC1jb25maWcubWQpLg0KDQoxMC4gKipT',
+                  'aXplIGJ1ZGdldC4qKiBBaW0gZm9yIOKJpCB+MjAgbm9kZXMgaW4gYSBmbG93Y2hhcnQsIOKJpCB+OCBwYXJ0aWNpcGFudHMNCiAg',
+                  'ICBpbiBhIHNlcXVlbmNlIGRpYWdyYW0sIOKJpCB+MTIgc3RhdGVzIGluIGEgc3RhdGUgZGlhZ3JhbS4gUGFzdCB0aGF0LA0KICAg',
+                  'IGRpYWdyYW1zIHN0b3AgYmVpbmcgdXNlZnVsIOKAlCBzcGxpdCB0aGVtLg0KDQotLS0NCg0KIyMgQXV0aG9yaW5nIFdvcmtmbG93',
+                  'DQoNCkZvbGxvdyB0aGlzIHByb2NlZHVyZSB3aGVuIGNyZWF0aW5nIGEgTWVybWFpZCBkaWFncmFtIGZyb20gYSB1c2VyJ3MgcmVx',
+                  'dWVzdC4NCg0KIyMjIFN0ZXAgMSDigJQgQ2xhcmlmeSBpbnRlbnQNCg0KV2hhdCBpcyB0aGUgZGlhZ3JhbSB0cnlpbmcgdG8gY29t',
+                  'bXVuaWNhdGU/IFByb2Nlc3M/IEludGVyYWN0aW9uPyBTdHJ1Y3R1cmU/DQpMaWZlY3ljbGU/IElmIHRoZSB1c2VyJ3MgcmVxdWVz',
+                  'dCBpcyBhbWJpZ3VvdXMgKGUuZy4gImRpYWdyYW0gb3VyIGF1dGggZmxvdyIpLA0KcGljayB0aGUgYmVzdCBmaXQgYW5kIHN0YXRl',
+                  'IGl0IGV4cGxpY2l0bHkgaW4geW91ciByZXBseSwgb3IgYXNrIG9uZSBmb2N1c2VkDQpxdWVzdGlvbi4NCg0KIyMjIFN0ZXAgMiDi',
+                  'gJQgUGljayB0aGUgZGlhZ3JhbSB0eXBlDQoNClVzZSB0aGUgdGFibGUgYWJvdmUgYW5kIFtgcmVmZXJlbmNlcy9kaWFncmFtLXR5',
+                  'cGVzLm1kYF0ocmVmZXJlbmNlcy9kaWFncmFtLXR5cGVzLm1kKS4NCklmIGluIGRvdWJ0LCBkZWZhdWx0IHRvIGBmbG93Y2hhcnQg',
+                  'TFJgIOKAlCBpdCdzIHRoZSBtb3N0IHdpZGVseSBzdXBwb3J0ZWQgYW5kDQp0aGUgbW9zdCBmb3JnaXZpbmcuDQoNCiMjIyBTdGVw',
+                  'IDMg4oCUIFNrZXRjaCBub2RlcyBhbmQgZWRnZXMgaW4gcGxhaW4gdGV4dA0KDQpCZWZvcmUgd3JpdGluZyBNZXJtYWlkLCBsaXN0',
+                  'IHRoZSBwYXJ0aWNpcGFudHMvbm9kZXMvc3RhdGVzIGFuZCB0aGUgcmVsYXRpb25zDQpiZXR3ZWVuIHRoZW0gaW4gcHJvc2UuIFRo',
+                  'aXMgY2F0Y2hlcyBtaXNzaW5nIHBpZWNlcyBiZWZvcmUgc3ludGF4IGdldHMgaW4gdGhlDQp3YXkuDQoNCiMjIyBTdGVwIDQg4oCU',
+                  'IFdyaXRlIGEgbWluaW1hbCB2YWxpZCBibG9jaw0KDQpTdGFydCB3aXRoIHRoZSBoZWFkZXIgbGluZSBhbmQgdGhlIHNtYWxsZXN0',
+                  'IHNldCBvZiBub2Rlcy9lZGdlcyB0aGF0IGNhcHR1cmVzDQp0aGUgaWRlYS4gS2VlcCBJRHMgc2hvcnQuIE5vIHN0eWxpbmcgeWV0',
+                  'Lg0KDQojIyMgU3RlcCA1IOKAlCBBZGQgbGFiZWxzLCBncm91cGluZywgYW5kIHN0eWxpbmcNCg0KLSBRdW90ZSBhbnkgbGFiZWwg',
+                  'dGhhdCBuZWVkcyBpdC4NCi0gQWRkIGBzdWJncmFwaGBzIC8gYGJveGBlcyAvIGBuYW1lc3BhY2VgcyBvbmx5IHdoZW4gZ3JvdXBp',
+                  'bmcgY2xhcmlmaWVzIHRoZQ0KICBkaWFncmFtLg0KLSBSZWFjaCBmb3IgYGNsYXNzRGVmYCArIGBjbGFzc2AgZm9yIHN0eWxpbmcg',
+                  'cmF0aGVyIHRoYW4gaW5saW5lIHN0eWxlcy4NCg0KIyMjIFN0ZXAgNiDigJQgQWRkIGFjY2Vzc2liaWxpdHkNCg0KQWRkIGBhY2NU',
+                  'aXRsZWAgYW5kIGBhY2NEZXNjcmAgbGluZXMgKHdoZXJlIHRoZSBkaWFncmFtIHR5cGUgc3VwcG9ydHMgdGhlbSkuDQpJZiB0aGUg',
+                  'ZGlhZ3JhbSB0eXBlIGRvZXMgKipub3QqKiBzdXBwb3J0IHRoZW0gKGUuZy4gYG1pbmRtYXBgLCBgdGltZWxpbmVgIG9uDQpvbGRl',
+                  'ciB2ZXJzaW9ucyksIHB1dCBhbiBlcXVpdmFsZW50IHN1bW1hcnkgaW4gdGhlIHN1cnJvdW5kaW5nIE1hcmtkb3duIHByb3NlDQpp',
+                  'bW1lZGlhdGVseSBiZWZvcmUgdGhlIGJsb2NrLg0KDQojIyMgU3RlcCA3IOKAlCBWZXJpZnkgYWdhaW5zdCB0YXJnZXQgaG9zdChz',
+                  'KQ0KDQpDcm9zcy1jaGVjayB0aGUgYmxvY2sgYWdhaW5zdCBob3N0IHF1aXJrcyBpbg0KW2ByZWZlcmVuY2VzL3JlbmRlcmluZy1o',
+                  'b3N0cy5tZGBdKHJlZmVyZW5jZXMvcmVuZGVyaW5nLWhvc3RzLm1kKToNCg0KLSAqKkdpdEh1YioqIOKAlCBzdHJpY3Rlc3Q7IG5v',
+                  'IGV4dGVybmFsIEpTOyBgJSV7aW5pdH0lJWAgaXMgYWxsb3dlZCBidXQNCiAgYHNlY3VyaXR5TGV2ZWw6ICdsb29zZSdgIGlzIGln',
+                  'bm9yZWQuDQotICoqVlMgQ29kZSoqIOKAlCByZXF1aXJlcyBhIE1lcm1haWQgcHJldmlldyBleHRlbnNpb24uDQotICoqTWtEb2Nz',
+                  'IE1hdGVyaWFsKiog4oCUIG5lZWRzIGBweW1kb3dueC5zdXBlcmZlbmNlc2AgY3VzdG9tLWZlbmNlIGNvbmZpZy4NCi0gKipEb2N1',
+                  'c2F1cnVzKiog4oCUIG5lZWRzIGBAZG9jdXNhdXJ1cy90aGVtZS1tZXJtYWlkYCBhbmQNCiAgYG1hcmtkb3duLm1lcm1haWQ6IHRy',
+                  'dWVgLg0KDQojIyMgU3RlcCA4IOKAlCBSdW4gdGhlIHZhbGlkYXRpb24gY2hlY2tsaXN0DQoNClNlZSBiZWxvdy4gT25seSB0aGVu',
+                  'IGhhbmQgdGhlIGRpYWdyYW0gYmFjay4NCg0KLS0tDQoNCiMjIFJldmlldyBXb3JrZmxvdw0KDQpXaGVuIGFza2VkIHRvIGZpeCBv',
+                  'ciByZXZpZXcgYW4gZXhpc3RpbmcgYCBgYGBtZXJtYWlkIGAgYmxvY2s6DQoNCiMjIyBTdGVwIDEg4oCUIElkZW50aWZ5IHRoZSBk',
+                  'aWFncmFtIHR5cGUNCg0KTG9vayBhdCB0aGUgZmlyc3Qgbm9uLWRpcmVjdGl2ZSwgbm9uLWNvbW1lbnQgbGluZS4gSWYgaXQgaXMg',
+                  'bWlzc2luZyBvcg0KbWlzc3BlbGxlZCAoYGZsb3dDaGFydGAgaW5zdGVhZCBvZiBgZmxvd2NoYXJ0YCwgYHNlcXVlbmNlRGlhbG9n',
+                  'YCBpbnN0ZWFkIG9mDQpgc2VxdWVuY2VEaWFncmFtYCksIHRoYXQgYWxvbmUgY2FuIGJyZWFrIHJlbmRlcmluZyBvbiBHaXRIdWIu',
+                  'DQoNCiMjIyBTdGVwIDIg4oCUIFZhbGlkYXRlIHN0cnVjdHVyYWwgc2hhcGUNCg0KRm9yIHRoZSBpZGVudGlmaWVkIHR5cGUsIGNo',
+                  'ZWNrIGFnYWluc3QgdGhlIHJlbGV2YW50IGByZWZlcmVuY2VzLzx0eXBlPi5tZGANCmRlZXAtZGl2ZSBmaWxlLiBFYWNoIGhhcyBh',
+                  'ICJDb21tb24gbWlzdGFrZXMiIHNlY3Rpb24gd2l0aCBiZWZvcmUvYWZ0ZXINCnNuaXBwZXRzLg0KDQojIyMgU3RlcCAzIOKAlCBT',
+                  'Y2FuIGZvciB1bml2ZXJzYWwgYnJlYWthZ2VzDQoNCi0gVW5lc2NhcGVkIGAoYCwgYClgLCBgPGAsIGA+YCwgYCNgLCBgImAgaW5z',
+                  'aWRlIGxhYmVscy4NCi0gYGVuZGAgdXNlZCBhcyBhIG5vZGUgSUQgKHJlc2VydmVkIHdvcmQpLg0KLSBBcnJvdyBraW5kIHRoYXQg',
+                  'ZG9lc24ndCBiZWxvbmcgdG8gdGhpcyBkaWFncmFtIHR5cGUgKGUuZy4gYC0tPj5gIGluIGENCiAgZmxvd2NoYXJ0KS4NCi0gTWlz',
+                  'c2luZyBgZW5kYCB0byBjbG9zZSBhIGBzdWJncmFwaGAsIGBhbHRgLCBgb3B0YCwgYGxvb3BgLCBvciBjb21wb3NpdGUNCiAgc3Rh',
+                  'dGUuDQotIFRyYWlsaW5nIHNlbWljb2xvbnMgd2hlcmUgdGhleSBhcmVuJ3QgbmVlZGVkICh0aGV5J3JlIHRvbGVyYXRlZCBpbg0K',
+                  'ICBmbG93Y2hhcnRzIGJ1dCBub2lzeSDigJQgcHJlZmVyIGNvbnNpc3RlbmN5KS4NCi0gTXVsdGlwbGUgZGlhZ3JhbSBoZWFkZXJz',
+                  'IGluIG9uZSBibG9jay4NCg0KIyMjIFN0ZXAgNCDigJQgQ2hlY2sgaG9zdCBjb21wYXRpYmlsaXR5DQoNCkFwcGx5IFtgcmVmZXJl',
+                  'bmNlcy9yZW5kZXJpbmctaG9zdHMubWRgXShyZWZlcmVuY2VzL3JlbmRlcmluZy1ob3N0cy5tZCkuDQpGbGFnIGFueSBmZWF0dXJl',
+                  'IHVzZWQgdGhhdCB0aGUgdGFyZ2V0IGhvc3QgZG9lcyBub3QgcmVuZGVyIChlLmcuDQpgQzRDb21wb25lbnRgIG9uIHZlcnkgb2xk',
+                  'IE1rRG9jcyBNZXJtYWlkIHZlcnNpb25zLCBvciBgaGFuZERyYXduYCBvbiBHaXRIdWIpLg0KDQojIyMgU3RlcCA1IOKAlCBDaGVj',
+                  'ayBhY2Nlc3NpYmlsaXR5DQoNCmBhY2NUaXRsZWAgYW5kIGBhY2NEZXNjcmAgcHJlc2VudCBvbiBzdXBwb3J0ZWQgdHlwZXM/IElm',
+                  'IG5vdCwgYWRkIHRoZW0gb3INCmFkZCBhIHByb3NlIHN1bW1hcnkuDQoNCiMjIyBTdGVwIDYg4oCUIFByb3Bvc2UgYSBtaW5pbWFs',
+                  'IGZpeA0KDQpTaG93IHRoZSBjb3JyZWN0ZWQgYmxvY2sgYW5kIGEgYnJpZWYgbGlzdCBvZiB3aGF0IHlvdSBjaGFuZ2VkIGFuZCB3',
+                  'aHkuIERvbid0DQpyZS1zdHlsZSBhIGRpYWdyYW0gdGhlIHVzZXIgZGlkbid0IGFzayB0byByZS1zdHlsZSDigJQgZml4IHdoYXQn',
+                  'cyBicm9rZW4gYW5kDQpsZWF2ZSB0aGUgcmVzdC4NCg0KRm9yIGEgZGVlcGVyIHJ1YnJpYywgc2VlDQpbYHJlZmVyZW5jZXMvcmV2',
+                  'aWV3LWNoZWNrbGlzdC5tZGBdKHJlZmVyZW5jZXMvcmV2aWV3LWNoZWNrbGlzdC5tZCkuDQoNCi0tLQ0KDQojIyBDb21tb24gR290',
+                  'Y2hhcw0KDQpUaGVzZSBhcmUgdGhlIG1pc3Rha2VzIHRoYXQga2VlcCBjb21pbmcgYmFjay4gQXZvaWQgdGhlbS4NCg0KIyMjIOKd',
+                  'jCBVbmVzY2FwZWQgYChgIGluc2lkZSBhIGZsb3djaGFydCBsYWJlbA0KDQpgYGBtZXJtYWlkDQpmbG93Y2hhcnQgTFINCiAgICBB',
+                  'W1BhcnNlIChKU09OKV0gLS0+IEINCmBgYA0KDQpUaGUgYChgIG9wZW5zIGEgc2Vjb25kIHNoYXBlIGFuZCBicmVha3MgdGhlIHBh',
+                  'cnNlci4gRml4IGJ5IHF1b3Rpbmc6DQoNCmBgYG1lcm1haWQNCmZsb3djaGFydCBMUg0KICAgIEFbIlBhcnNlIChKU09OKSJdIC0t',
+                  'PiBCDQpgYGANCg0KIyMjIOKdjCBVc2luZyBgZW5kYCBhcyBhIG5vZGUgSUQNCg0KYGVuZGAgaXMgcmVzZXJ2ZWQgKGl0IGNsb3Nl',
+                  'cyBgc3ViZ3JhcGhgIGJsb2NrcykuIFJlbmFtZSB0aGUgbm9kZToNCg0KYGBgbWVybWFpZA0KZmxvd2NoYXJ0IExSDQogICAgc3Rh',
+                  'cnQgLS0+IGZpbmlzaA0KYGBgDQoNCiMjIyDinYwgV3JvbmcgYXJyb3cgZm9yIHRoZSBkaWFncmFtIHR5cGUNCg0KLSBGbG93Y2hh',
+                  'cnQ6IGAtLT5gLCBgLS0tYCwgYC0uLT5gLCBgPT0+YC4NCi0gU2VxdWVuY2U6IGAtPmAsIGAtLT5gLCBgLT4+YCwgYC0tPj5gLCBg',
+                  'LXhgLCBgLS14YC4NCi0gQ2xhc3M6IGA8fC0tYCwgYCotLWAsIGBvLS1gLCBgLS0+YCwgYC4uPmAsIGA8Li5gLg0KLSBTdGF0ZTog',
+                  'YC0tPmAuDQotIEVSOiBgfHwtLW97YCwgYHx8LS18e2AsIGB9by0tb3tgLCBldGMuDQoNCk1peGluZyB0aGVzZSBhY3Jvc3MgZGlh',
+                  'Z3JhbSB0eXBlcyBwcm9kdWNlcyBzaWxlbnQgbWlzLXJlbmRlcmluZy4NCg0KIyMjIOKdjCBHaXRIdWIgcmVuZGVycyBkaWZmZXJl',
+                  'bnRseSBmcm9tIHRoZSBsaXZlIGVkaXRvcg0KDQpUaGUgbGl2ZSBNZXJtYWlkIGVkaXRvciBpcyBtb3JlIHBlcm1pc3NpdmUuIElm',
+                  'IGEgZGlhZ3JhbSB3b3JrcyB0aGVyZSBidXQgbm90DQpvbiBHaXRIdWIsIHN1c3BlY3Q6IHVucXVvdGVkIGxhYmVscywgYHNlY3Vy',
+                  'aXR5TGV2ZWw6ICdsb29zZSdgIGZlYXR1cmVzDQooY2xpY2sgaGFuZGxlcnMgd2l0aCBKUywgSFRNTCBpbiBsYWJlbHMpLCBvciBh',
+                  'IGRpYWdyYW0gdHlwZSB0aGF0IHRoZSBwaW5uZWQNCkdpdEh1YiBNZXJtYWlkIHZlcnNpb24gZG9lc24ndCBzdXBwb3J0IHlldC4N',
+                  'Cg0KIyMjIOKdjCBEb2N1c2F1cnVzICJkaWFncmFtIG5vdCByZW5kZXJpbmciDQoNCkRvY3VzYXVydXMgZG9lcyBub3QgcmVuZGVy',
+                  'IE1lcm1haWQgb3V0IG9mIHRoZSBib3guIFRoZSB1c2VyIG11c3QgaW5zdGFsbA0KYEBkb2N1c2F1cnVzL3RoZW1lLW1lcm1haWRg',
+                  'IGFuZCBzZXQgYG1hcmtkb3duLm1lcm1haWQ6IHRydWVgIGluDQpgZG9jdXNhdXJ1cy5jb25maWcuanNgLiBTZWUNCltgcmVmZXJl',
+                  'bmNlcy9yZW5kZXJpbmctaG9zdHMubWRgXShyZWZlcmVuY2VzL3JlbmRlcmluZy1ob3N0cy5tZCkuDQoNCiMjIyDinYwgTWtEb2Nz',
+                  'IE1hdGVyaWFsIHNob3dzIHJhdyBjb2RlDQoNClRoZSBgcHltZG93bnguc3VwZXJmZW5jZXNgIGV4dGVuc2lvbiBuZWVkcyBhIGN1',
+                  'c3RvbSBmZW5jZSBmb3IgYG1lcm1haWRgLCBhbmQNCnRoZSBNZXJtYWlkIEpTIG11c3QgYmUgcHVsbGVkIGluIHZpYSBgZXh0cmFf',
+                  'amF2YXNjcmlwdGAuIFdpdGhvdXQgYm90aCwgdGhlDQpibG9jayByZW5kZXJzIGFzIGEgY29kZSBibG9jaywgbm90IGEgZGlhZ3Jh',
+                  'bS4NCg0KIyMjIOKdjCBWUyBDb2RlIHByZXZpZXcgc2hvd3Mgbm90aGluZw0KDQpWUyBDb2RlJ3MgYnVpbHQtaW4gTWFya2Rvd24g',
+                  'cHJldmlldyBkb2Vzbid0IHJlbmRlciBNZXJtYWlkLiBJbnN0YWxsIHRoZQ0KTWFya2Rvd24gUHJldmlldyBNZXJtYWlkIFN1cHBv',
+                  'cnQgZXh0ZW5zaW9uIChvciBlcXVpdmFsZW50KS4NCg0KIyMjIOKdjCBgJSV7aW5pdH0lJWAgYWZ0ZXIgdGhlIGhlYWRlcg0KDQpU',
+                  'aGUgZGlyZWN0aXZlIG11c3QgY29tZSAqKmJlZm9yZSoqIHRoZSBkaWFncmFtLXR5cGUgaGVhZGVyLCBvdGhlcndpc2UgaXQgaXMN',
+                  'Cmlnbm9yZWQ6DQoNCmBgYGB0ZXh0DQolJXtpbml0OiB7J3RoZW1lJzonZGFyayd9fSUlDQpzZXF1ZW5jZURpYWdyYW0NCiAgICAu',
+                  'Li4NCmBgYGANCg0KLS0tDQoNCiMjIFZhbGlkYXRpb24gQ2hlY2tsaXN0DQoNCkJlZm9yZSBoYW5kaW5nIGFueSBNZXJtYWlkIGRp',
+                  'YWdyYW0gYmFjaywgdmVyaWZ5IGVhY2ggb2YgdGhlc2U6DQoNCi0gWyBdICoqQ29ycmVjdCBmZW5jZSoqIOKAlCBgYCBgYGBtZXJt',
+                  'YWlkIGBgIGV4YWN0bHkuDQotIFsgXSAqKkV4YWN0bHkgb25lIGRpYWdyYW0tdHlwZSBoZWFkZXIqKiBvbiB0aGUgZmlyc3Qgbm9u',
+                  'LWRpcmVjdGl2ZSBsaW5lLg0KLSBbIF0gKipgJSV7aW5pdH0lJWAgKGlmIHByZXNlbnQpIGlzIG9uIHRoZSB2ZXJ5IGZpcnN0IGxp',
+                  'bmUuKioNCi0gWyBdICoqQWxsIGxhYmVscyB3aXRoIHNwZWNpYWwgY2hhcmFjdGVycyBhcmUgcXVvdGVkLioqDQotIFsgXSAqKk5v',
+                  'IHJlc2VydmVkIHdvcmRzIHVzZWQgYXMgSURzKiogKGBlbmRgLCBgc3ViZ3JhcGhgLCBgY2xhc3NgLA0KICAgICAgYGNsaWNrYCwg',
+                  'YGRpcmVjdGlvbmAsIGV0Yy4pLg0KLSBbIF0gKipBcnJvdy9lZGdlIHN5bnRheCBtYXRjaGVzIHRoZSBkaWFncmFtIHR5cGUuKioN',
+                  'Ci0gWyBdICoqYHN1YmdyYXBoYCAvIGBhbHRgIC8gYG9wdGAgLyBgbG9vcGAgLyBjb21wb3NpdGUgc3RhdGVzIGFyZSBjbG9zZWQN',
+                  'CiAgICAgIHdpdGggYGVuZGAuKioNCi0gWyBdICoqYGFjY1RpdGxlYCBhbmQgYGFjY0Rlc2NyYCBwcmVzZW50KiogKG9yIHByb3Nl',
+                  'IHN1bW1hcnkgZm9yIHR5cGVzIHRoYXQNCiAgICAgIGRvbid0IHN1cHBvcnQgdGhlbSkuDQotIFsgXSAqKlNpemUgaXMgd2l0aGlu',
+                  'IGJ1ZGdldCoqIChzZWUgcHJpbmNpcGxlIDEwKS4NCi0gWyBdICoqVGFyZ2V0IGhvc3QocykgdmVyaWZpZWQqKiDigJQgYXBwbGll',
+                  'ZCB0aGUgcXVpcmtzIGZyb20NCiAgICAgIFtgcmVmZXJlbmNlcy9yZW5kZXJpbmctaG9zdHMubWRgXShyZWZlcmVuY2VzL3JlbmRl',
+                  'cmluZy1ob3N0cy5tZCkuDQotIFsgXSAqKk9uZSBpZGVhIHBlciBibG9jayoqIOKAlCBubyBkaWFncmFtLXR5cGUgbWl4aW5nLg0K',
+                  'DQotLS0NCg0KIyMgT3V0cHV0IFRlbXBsYXRlDQoNClVzZSB0aGlzIHNrZWxldG9uIGFzIHRoZSBzdGFydGluZyBwb2ludCBmb3Ig',
+                  'ZXZlcnkgTWVybWFpZCBkaWFncmFtIGVtYmVkZGVkDQppbiBNYXJrZG93bjoNCg0KYGBgYG1hcmtkb3duDQo8IS0tIE9wdGlvbmFs',
+                  'OiBvbmUtbGluZSBwcm9zZSBzdW1tYXJ5IG9mIHRoZSBkaWFncmFtLCBlc3BlY2lhbGx5IGlmIHRoZQ0KICAgICBkaWFncmFtIHR5',
+                  'cGUgZG9lcyBub3Qgc3VwcG9ydCBhY2NUaXRsZS9hY2NEZXNjci4gLS0+DQoNCmBgYG1lcm1haWQNCiUle2luaXQ6IHsndGhlbWUn',
+                  'OidkZWZhdWx0J319JSUNCjxkaWFncmFtLXR5cGUtaGVhZGVyPg0KICAgIGFjY1RpdGxlOiA8c2hvcnQgdGl0bGU+DQogICAgYWNj',
+                  'RGVzY3I6IDxvbmUtc2VudGVuY2UgZGVzY3JpcHRpb24+DQoNCiAgICA8bm9kZXMgLyBwYXJ0aWNpcGFudHMgLyBlbnRpdGllcz4N',
+                  'Cg0KICAgIDxlZGdlcyAvIHJlbGF0aW9uc2hpcHM+DQoNCiAgICAlJSBPcHRpb25hbCBzdHlsaW5nIHZpYSBjbGFzc0RlZi9jbGFz',
+                  'cw0KYGBgDQpgYGBgDQoNCi0tLQ0KDQojIyBSZWZlcmVuY2VzDQoNCkRlZXAtZGl2ZXMgbGl2ZSBpbiBbYHJlZmVyZW5jZXMvYF0o',
+                  'cmVmZXJlbmNlcy8pOg0KDQotIFtgZGlhZ3JhbS10eXBlcy5tZGBdKHJlZmVyZW5jZXMvZGlhZ3JhbS10eXBlcy5tZCkg4oCUIGRl',
+                  'Y2lzaW9uIG1hdHJpeCBhbmQgYQ0KICBvbmUtbGluZSBjYW5vbmljYWwgZXhhbXBsZSBwZXIgY292ZXJlZCB0eXBlLg0KLSBQZXIt',
+                  'dHlwZSBndWlkZXM6IFtgZmxvd2NoYXJ0Lm1kYF0ocmVmZXJlbmNlcy9mbG93Y2hhcnQubWQpLA0KICBbYHNlcXVlbmNlLm1kYF0o',
+                  'cmVmZXJlbmNlcy9zZXF1ZW5jZS5tZCksDQogIFtgY2xhc3MubWRgXShyZWZlcmVuY2VzL2NsYXNzLm1kKSwNCiAgW2BzdGF0ZS5t',
+                  'ZGBdKHJlZmVyZW5jZXMvc3RhdGUubWQpLA0KICBbYGVyLm1kYF0ocmVmZXJlbmNlcy9lci5tZCksDQogIFtgZ2FudHQubWRgXShy',
+                  'ZWZlcmVuY2VzL2dhbnR0Lm1kKSwNCiAgW2BtaW5kbWFwLm1kYF0ocmVmZXJlbmNlcy9taW5kbWFwLm1kKSwNCiAgW2B0aW1lbGlu',
+                  'ZS5tZGBdKHJlZmVyZW5jZXMvdGltZWxpbmUubWQpLA0KICBbYGM0Lm1kYF0ocmVmZXJlbmNlcy9jNC5tZCkuDQotIFtgdGhlbWlu',
+                  'Zy1hbmQtY29uZmlnLm1kYF0ocmVmZXJlbmNlcy90aGVtaW5nLWFuZC1jb25maWcubWQpIOKAlCBgJSV7aW5pdH0lJWAsDQogIHRo',
+                  'ZW1lcywgYGxvb2s6IGhhbmREcmF3bmAsIGB0aGVtZVZhcmlhYmxlc2AuDQotIFtgYWNjZXNzaWJpbGl0eS5tZGBdKHJlZmVyZW5j',
+                  'ZXMvYWNjZXNzaWJpbGl0eS5tZCkg4oCUIGBhY2NUaXRsZWAgLyBgYWNjRGVzY3JgDQogIGFuZCBkaWFncmFtLWNob2ljZSBndWlk',
+                  'YW5jZSBmb3IgYTExeS4NCi0gW2ByZW5kZXJpbmctaG9zdHMubWRgXShyZWZlcmVuY2VzL3JlbmRlcmluZy1ob3N0cy5tZCkg4oCU',
+                  'IEdpdEh1YiwgVlMgQ29kZSwNCiAgTWtEb2NzIE1hdGVyaWFsLCBEb2N1c2F1cnVzLg0KLSBbYHJldmlldy1jaGVja2xpc3QubWRg',
+                  'XShyZWZlcmVuY2VzL3Jldmlldy1jaGVja2xpc3QubWQpIOKAlCB0aGUgc3RydWN0dXJlZA0KICByZXZpZXcvZml4IHJ1YnJpYy4N',
+                  'Cg0KVGhpcyBza2lsbCB0YXJnZXRzICoqTWVybWFpZCB2MTArKiouIEZlYXR1cmVzIHRoYXQgcmVxdWlyZSBhIG5ld2VyIG1pbmlt',
+                  'dW0NCnZlcnNpb24gYXJlIGZsYWdnZWQgaW4gZWFjaCByZWZlcmVuY2UgZmlsZS4NCg=='
+              )
+              $MermaidSkillInstructions = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($MermaidSkillBase64)) -split "`r?`n"
+
+              $PromptLines = @(
+                  $DiataxisAgentInstructions,
+                  "",
+                  "## mermaid-diagrams skill",
+                  "",
+                  $MermaidSkillInstructions,
+                  "",
+                  "## Important overrides for this task",
+                  "- This is a non-interactive, unattended batch job - there is no user to ask. Ignore 'Step 1: Clarify User Intent', 'If user is uncertain, ask clarifying questions', 'Ambiguous scope', and 'When to Ask for Clarification' - make the best reasonable judgment call instead and proceed directly to writing the document.",
+                  "- Skip Step 5 items 2-4 and the Communication Style guidance about explaining your reasoning or asking the user - output ONLY the raw markdown document, no commentary, questions, or companion-doc recommendations.",
+                  "- The `mermaid-diagrams` skill is available (included above as '## mermaid-diagrams skill') - follow its Diagrams guidance exactly if a diagram would help; its `references/*.md` deep-dive links are not available in this environment, so rely only on the rules stated inline above.",
+                  "",
+                  "$DocContext",
+                  "",
+                  "Follow the Diataxis framework with these four sections, in this order:",
+                  "1. Tutorials - a step-by-step walkthrough for a first-time user to get the workflow running end-to-end",
+                  "2. How-to guides - step-by-step instructions for common tasks",
+                  "3. Reference - triggers, secrets, tickers/instruments table, output fields, API/data sources",
+                  "4. Explanation - design decisions and reasoning",
+                  "",
+                  "Rules:",
+                  "- The document must start with: '# Workflow documentation: <Workflow Display Name>'",
+                  "- Line 2 must be exactly: **Workflow file:** [.github/workflows/$WorkflowName.yml](../../.github/workflows/$WorkflowName.yml)",
+                  "- Line 3 must be exactly: **Last reviewed date:** $Today",
+                  "- After line 3, add a '## Intro' section with a 2-3 sentence summary explaining what the workflow does and why it exists",
+                  "- Use markdown tables for all lists of items (triggers, secrets, fields, tickers, etc.)",
+                  "- Create/update all Reference tables to exactly match the current workflow file",
+                  "- Do not add commentary or preamble - output only the raw markdown document",
+                  "",
+                  "## Current workflow file ($WorkflowFile)",
+                  "",
+                  '```yaml',
+                  $WorkflowContent,
+                  '```',
+                  "",
+                  "## Current documentation ($DocFile)",
+                  "",
+                  $CurrentDoc,
+                  "",
+                  "## Recent commits to the workflow since the doc was last updated",
+                  "",
+                  $CommitList
+              )
+              $Prompt = $PromptLines -join "`n"
+
+              $RequestBody = @{
+                  model    = "gemini-3.5-flash-lite"
+                  messages = @(
+                      @{ role = "user"; content = $Prompt }
+                  )
+                  max_tokens = 4096
+              } | ConvertTo-Json -Depth 10
+
+              # Gemini occasionally returns 503 (overloaded) - retry with a fixed delay.
+              # 429 means the daily quota is exhausted, so retrying won't help - skip this doc instead.
+              $MaxAttempts = 10
+              $RetryDelaySeconds = 5
+              $Response = $null
+              for ($Attempt = 1; $Attempt -le $MaxAttempts; $Attempt++) {
+                  try {
+                      $Response = Invoke-RestMethod `
+                          -Uri     "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions" `
+                          -Method  Post `
+                          -Headers @{
+                              "Authorization" = "Bearer $env:GEMINI_API_KEY"
+                              "Content-Type"  = "application/json"
+                          } `
+                          -Body $RequestBody `
+                          -ErrorAction Stop
+                      break
+                  } catch {
+                      $StatusCode = $_.Exception.Response.StatusCode.value__
+                      if ($StatusCode -eq 429) {
+                          Write-Host "  Gemini API quota exhausted (429), skipping $DocFile for this run."
+                          break
+                      } elseif ($StatusCode -in 500, 503 -and $Attempt -lt $MaxAttempts) {
+                          Write-Host "  Gemini API returned $StatusCode, retrying in $RetryDelaySeconds s (attempt $Attempt/$MaxAttempts)..."
+                          Start-Sleep -Seconds $RetryDelaySeconds
+                      } else {
+                          throw
+                      }
+                  }
+              }
+
+              if (-not $Response) { continue }
+
+              $NewDocContent = $Response.choices[0].message.content
+
+              # Strip code fence wrapper if the AI returned ```markdown ... ```
+              $NewDocContent = $NewDocContent -replace '^```[a-z]*\r?\n', '' -replace '\r?\n```\s*$', ''
+
+              # Create/refresh branch, commit, open PR (or comment on the existing one)
+              $DocExists  = Test-Path $DocFile
+              $Action     = if ($DocExists) { "update" } else { "create" }
+              $CommitMsg  = if ($ExistingPR) { "docs: refresh $DocFile (workflow changed since this PR was last updated)" } elseif ($DocExists) { "docs: auto-update $DocFile (workflow changed since last doc edit)" } else { "docs: create $DocFile" }
+              $PRTitle    = if ($DocExists) { "📝 Doc update: $WorkflowName" } else { "📝 New doc: $WorkflowName" }
+
+              if ($ExistingPR) {
+                  git checkout -B $BranchName "origin/$BranchName"
+              } else {
+                  git checkout main
+                  git checkout -b $BranchName
+              }
+
+              $null = New-Item -ItemType Directory -Force -Path (Split-Path $DocFile)
+              Set-Content -Path $DocFile -Value $NewDocContent -NoNewline
+              git add $DocFile
+              git commit -m $CommitMsg
+              git push origin $BranchName
+
+              if ($ExistingPR) {
+                  $CommentBodyLines = @(
+                      "🔄 Documentation regenerated - the workflow changed since this PR was last updated.",
+                      "",
+                      "| | Date |",
+                      "|---|---|",
+                      "| Workflow last changed | $WorkflowDate |",
+                      "",
+                      "## Workflow commits since last doc update",
+                      "",
+                      $CommitList
+                  )
+                  $CommentBody = $CommentBodyLines -join "`n"
+
+                  gh pr comment $ExistingPR.number --repo $env:REPO --body $CommentBody
+
+                  Write-Host "  PR #$($ExistingPR.number) refreshed for $DocFile"
+              } else {
+                  $PRBodyLines = @(
+                      $(if ($DocExists) {
+                          "This PR was automatically generated because ``$WorkflowFile`` was modified after the documentation was last updated."
+                      } else {
+                          "This PR was automatically generated because ``$WorkflowFile`` exists but has no documentation yet."
+                      }),
+                      "",
+                      "| | Date |",
+                      "|---|---|",
+                      "| Workflow last changed | $WorkflowDate |",
+                      "| Doc last changed | $(if ($DocDate) { $DocDate } else { 'never' }) |",
+                      "",
+                      "Please review the $Action`d documentation for accuracy, then merge or request changes.",
+                      "",
+                      "## Workflow commits since last doc update",
+                      "",
+                      $CommitList
+                  )
+                  $PRBody = $PRBodyLines -join "`n"
+
+                  gh pr create `
+                      --repo  $env:REPO `
+                      --title $PRTitle `
+                      --body  $PRBody `
+                      --base  main `
+                      --head  $BranchName `
+                      --label "documentation"
+
+                  Write-Host "  PR created for $DocFile"
+              }
+          }
+
