@@ -1,4 +1,4 @@
-name: doc-staleness-check-test
+name: doc-staleness-check
 
 on:
   workflow_dispatch:
