@@ -1,4 +1,4 @@
-name: doc-staleness-check
+name: doc-staleness-check-test
 
 on:
   workflow_dispatch:
@@ -48,7 +48,7 @@ jobs:
           foreach ($WfFile in $WorkflowFiles) {
               $WorkflowFile = $WfFile.FullName.Replace($PWD.Path + [System.IO.Path]::DirectorySeparatorChar, "").Replace("\", "/")
               $WorkflowName = $WfFile.BaseName
-              $DocFile      = "docs/workflows/$WorkflowName.md"
+              $DocFile      = "docs/$WorkflowName.md"
 
               Write-Host "Checking: $WorkflowFile"
 
@@ -107,8 +107,26 @@ jobs:
               } else {
                   "You are creating a new documentation file from scratch. Write complete Tutorials, Explanation and How-to sections based on the workflow."
               }
+
+              # diataxis-doc-writer agent + mermaid-diagrams skill, read from the repo so this workflow
+              # doesn't have to duplicate their content inline (checkout already has them on disk).
+              # Frontmatter is stripped since it's only metadata for VS Code/Copilot, not for Gemini.
+              $DiataxisAgentInstructions = (Get-Content ".github/agents/diataxis-doc-writer.agent.md" -Raw) -replace '(?s)^---.*?---\r?\n\r?\n', ''
+              $MermaidSkillInstructions  = (Get-Content ".github/skills/mermaid-diagrams/SKILL.md" -Raw) -replace '(?s)^---.*?---\r?\n\r?\n', ''
+
               $PromptLines = @(
-                  "You are a technical writer. $DocContext",
+                  $DiataxisAgentInstructions,
+                  "",
+                  "## mermaid-diagrams skill",
+                  "",
+                  $MermaidSkillInstructions,
+                  "",
+                  "## Important overrides for this task",
+                  "- This is a non-interactive, unattended batch job - there is no user to ask. Ignore 'Step 1: Clarify User Intent', 'If user is uncertain, ask clarifying questions', 'Ambiguous scope', and 'When to Ask for Clarification' - make the best reasonable judgment call instead and proceed directly to writing the document.",
+                  "- Skip Step 5 items 2-4 and the Communication Style guidance about explaining your reasoning or asking the user - output ONLY the raw markdown document, no commentary, questions, or companion-doc recommendations.",
+                  "- The `mermaid-diagrams` skill is available (included above as '## mermaid-diagrams skill') - follow its Diagrams guidance exactly if a diagram would help; its `references/*.md` deep-dive links are not available in this environment, so rely only on the rules stated inline above.",
+                  "",
+                  "$DocContext",
                   "",
                   "Follow the Diataxis framework with these four sections, in this order:",
                   "1. Tutorials - a step-by-step walkthrough for a first-time user to get the workflow running end-to-end",
@@ -119,10 +137,12 @@ jobs:
                   "Rules:",
                   "- The document must start with: '# Workflow documentation: <Workflow Display Name>'",
                   "- Line 2 must be exactly: **Workflow file:** [.github/workflows/$WorkflowName.yml](../../.github/workflows/$WorkflowName.yml)",
-                  "- Line 3 must be exactly: **Last reviewed date:** $Today",
-                  "- After line 3, add a '## Intro' section with a 2-3 sentence summary explaining what the workflow does and why it exists",
+                  "- Line 3 must be blank - a single newline is not a Markdown line break, so without a blank line the next line renders merged onto line 2",
+                  "- Line 4 must be exactly: **Last reviewed date:** $Today",
+                  "- After line 4, add a blank line, then a '## Intro' section with a 2-3 sentence summary explaining what the workflow does and why it exists",
                   "- Use markdown tables for all lists of items (triggers, secrets, fields, tickers, etc.)",
                   "- Create/update all Reference tables to exactly match the current workflow file",
+                  "- Required: include one Mermaid flowchart (per the mermaid-diagrams skill's rules) visualizing this workflow's trigger(s) -> steps/jobs flow, placed in the Explanation section at the bottom - do not skip this even for simple workflows",
                   "- Do not add commentary or preamble - output only the raw markdown document",
                   "",
                   "## Current workflow file ($WorkflowFile)",
