@@ -48,7 +48,7 @@ jobs:
           foreach ($WfFile in $WorkflowFiles) {
               $WorkflowFile = $WfFile.FullName.Replace($PWD.Path + [System.IO.Path]::DirectorySeparatorChar, "").Replace("\", "/")
               $WorkflowName = $WfFile.BaseName
-              $DocFile      = "docs/$WorkflowName.md"
+              $DocFile      = "docs/workflows/$WorkflowName.md"
 
               Write-Host "Checking: $WorkflowFile"
 
