@@ -48,7 +48,7 @@ jobs:
           foreach ($WfFile in $WorkflowFiles) {
               $WorkflowFile = $WfFile.FullName.Replace($PWD.Path + [System.IO.Path]::DirectorySeparatorChar, "").Replace("\", "/")
               $WorkflowName = $WfFile.BaseName
-              $DocFile      = "docs/test/$WorkflowName.md"
+              $DocFile      = "docs/$WorkflowName.md"
 
               Write-Host "Checking: $WorkflowFile"
 
@@ -142,7 +142,7 @@ jobs:
                   "- After line 4, add a blank line, then a '## Intro' section with a 2-3 sentence summary explaining what the workflow does and why it exists",
                   "- Use markdown tables for all lists of items (triggers, secrets, fields, tickers, etc.)",
                   "- Create/update all Reference tables to exactly match the current workflow file",
-                  "- Required: include one Mermaid flowchart (per the mermaid-diagrams skill's rules) visualizing this workflow's trigger(s) -> steps/jobs flow, placed in the Explanation section - do not skip this even for simple workflows",
+                  "- Required: include one Mermaid flowchart (per the mermaid-diagrams skill's rules) visualizing this workflow's trigger(s) -> steps/jobs flow, placed in the Explanation section at the bottom - do not skip this even for simple workflows",
                   "- Do not add commentary or preamble - output only the raw markdown document",
                   "",
                   "## Current workflow file ($WorkflowFile)",
