@@ -1,7 +1,7 @@
 # Workflow documentation: doc-staleness-check
 **Workflow file:** [.github/workflows/doc-staleness-check.yml](../../.github/workflows/doc-staleness-check.yml)
 
-**Last reviewed date:** 2026-11-01
+**Last reviewed date:** 2026-11-02
 
 ## Intro
 The `doc-staleness-check` workflow automates the maintenance of workflow documentation by comparing the commit timestamps of workflow files against their corresponding documentation. When a workflow file is modified, the workflow uses the Gemini API to rewrite or update the relevant documentation file and opens or refreshes a pull request.
