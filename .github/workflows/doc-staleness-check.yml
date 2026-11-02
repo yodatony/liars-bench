@@ -54,7 +54,8 @@ jobs:
 
               # Get the last commit date for the workflow and the doc
               $WorkflowDate = git log -1 --format="%ci" -- $WorkflowFile 2>$null
-              $DocDate      = git log -1 --format="%ci" -- $DocFile      2>$null
+              # git log also returns the commit that deleted a file, so only trust it if the doc exists now
+              $DocDate      = if (Test-Path $DocFile) { git log -1 --format="%ci" -- $DocFile 2>$null } else { $null }
 
               if (-not $WorkflowDate) {
                   Write-Host "  No commits found for workflow, skipping."
