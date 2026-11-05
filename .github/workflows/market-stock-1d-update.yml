@@ -33,9 +33,10 @@ jobs:
               @{ Name = "AAPL";    Ticker = "AAPL";       Market = "US"; Own = $false }
               @{ Name = "MSFT";    Ticker = "MSFT";       Market = "US"; Own = $true  }
               @{ Name = "AMZN";    Ticker = "AMZN";       Market = "US"; Own = $false }
-              @{ Name = "GOOGL";   Ticker = "GOOGL";      Market = "US"; Own = $false }
+              @{ Name = "GOOGL";   Ticker = "GOOGL";      Market = "US"; Own = $true }
               @{ Name = "TSLA";    Ticker = "TSLA";       Market = "US"; Own = $true }
               @{ Name = "NOW";     Ticker = "NOW"; Market = "US"; Own = $true  }
+              @{ Name = "NVDA";     Ticker = "NVDA"; Market = "US"; Own = $true  }
           )
 
           function Get-EodData([string]$Ticker) {
