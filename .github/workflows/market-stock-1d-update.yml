@@ -37,6 +37,7 @@ jobs:
               @{ Name = "TSLA";    Ticker = "TSLA";       Market = "US"; Own = $true }
               @{ Name = "NOW";     Ticker = "NOW"; Market = "US"; Own = $true  }
               @{ Name = "NVDA";     Ticker = "NVDA"; Market = "US"; Own = $true  }
+              @{ Name = "MU";     Ticker = "MU"; Market = "US"; Own = $true  }
           )
 
           function Get-EodData([string]$Ticker) {
@@ -75,6 +76,7 @@ jobs:
 
           $Results = @()
           foreach ($idx in $Indices) {
+              Start-Sleep 10
               $Flag = switch ($idx.Market) {
                   "SE"    { "🇸🇪" }
                   "DK"    { "🇩🇰" }

@@ -30,12 +30,14 @@ jobs:
               @{ Name = "TSLA";     Ticker = "TSLA";  Market = "US"; Own = $true }
               @{ Name = "NOW";     Ticker = "NOW"; Market = "US"; Own = $true  }
               @{ Name = "NVDA";     Ticker = "NVDA"; Market = "US"; Own = $true  }
+              @{ Name = "MU";     Ticker = "MU";  Market = "US"; Own = $true  }
           )
 
           $CandleDate = $null
           $Alerts = @()
           foreach ($idx in $Indices) {
               try {
+                  Start-Sleep 10
                   $Enc  = [Uri]::EscapeDataString($idx.Ticker)
                   $R    = Invoke-RestMethod `
                               -Uri "https://api.twelvedata.com/quote?symbol=$Enc&apikey=$($env:TWELVEDATA_KEY)" `

@@ -35,6 +35,7 @@ jobs:
               @{ Name = "AVGO";             Ticker = "AVGO";      Market = "US"; Own = $true }
               @{ Name = "NVDA";     Ticker = "NVDA"; Market = "US"; Own = $true  }
               @{ Name = "GOOGL";     Ticker = "GOOGL"; Market = "US"; Own = $true  }
+              @{ Name = "MU";     Ticker = "MU"; Market = "US"; Own = $true  }
           )
 
           function Get-IndexData([string]$Ticker, [string]$Market) {
@@ -65,7 +66,7 @@ jobs:
               $out = @()
               foreach ($idx in $IdxList) {
                   try {
-                      start-sleep 15
+                      Start-Sleep 10
                       $d         = Get-IndexData $idx.Ticker $idx.Market
                       if (-not $script:CandleDate) { $script:CandleDate = $d.Date }
                       $Portfolio = if ($idx.Own) { '💼' } else { '' }
