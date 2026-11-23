@@ -31,6 +31,7 @@ jobs:
               @{ Name = "NOW";     Ticker = "NOW"; Market = "US"; Own = $true  }
               @{ Name = "NVDA";     Ticker = "NVDA"; Market = "US"; Own = $true  }
               @{ Name = "MU";     Ticker = "MU";  Market = "US"; Own = $true  }
+              @{ Name = "AMD";     Ticker = "AMD";  Market = "US"; Own = $true  }
           )
 
           $CandleDate = $null

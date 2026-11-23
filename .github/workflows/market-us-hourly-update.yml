@@ -36,6 +36,7 @@ jobs:
               @{ Name = "NVDA";     Ticker = "NVDA"; Market = "US"; Own = $true  }
               @{ Name = "GOOGL";     Ticker = "GOOGL"; Market = "US"; Own = $true  }
               @{ Name = "MU";     Ticker = "MU"; Market = "US"; Own = $true  }
+              @{ Name = "AMD";     Ticker = "AMD";  Market = "US"; Own = $true  }
           )
 
           function Get-IndexData([string]$Ticker, [string]$Market) {
